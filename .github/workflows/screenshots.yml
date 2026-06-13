@@ -1,0 +1,44 @@
+name: Screenshots
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - ios
+          - android
+          - all
+
+jobs:
+  generate:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Install Maestro
+        run: curl -Ls "https://get.maestro.mobile.dev" | bash
+
+      - name: Generate screenshots
+        run: pnpm screenshots -- --platform ${{ inputs.platform }}
+        env:
+          MAESTRO_APP_ID: ${{ secrets.MAESTRO_APP_ID }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-${{ inputs.platform }}
+          path: screenshots/

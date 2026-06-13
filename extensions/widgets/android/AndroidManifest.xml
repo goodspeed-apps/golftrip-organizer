@@ -1,0 +1,36 @@
+<!-- extensions/widgets/android/AndroidManifest.xml
+     GAS Template — Android widget manifest fragment
+     Merge this into your app's AndroidManifest.xml via an Expo config plugin.
+     Replace {{bundleIdentifier}} with your app package name. -->
+
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+
+        <!-- ─── Widget Receiver ─────────────────────────────────────────── -->
+        <receiver
+            android:name=".widget.HelloWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/hello_widget_info" />
+        </receiver>
+
+        <!-- ─── Shared-Data ContentProvider ────────────────────────────── -->
+        <!--
+            The ContentProvider gives the widget read access to data written
+            by the main app without requiring MMKV or any third-party dep.
+            Authority MUST match the value used in HelloWidgetProvider.kt.
+        -->
+        <provider
+            android:name=".widget.WidgetDataProvider"
+            android:authorities="{{bundleIdentifier}}.widgetdata"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+
+    </application>
+
+</manifest>

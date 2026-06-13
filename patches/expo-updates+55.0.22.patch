@@ -1,0 +1,55 @@
+diff --git a/node_modules/expo-updates/ios/EXUpdates/AppLoader/AppLoader.swift b/node_modules/expo-updates/ios/EXUpdates/AppLoader/AppLoader.swift
+index 17e9e4e..5d5b983 100644
+--- a/node_modules/expo-updates/ios/EXUpdates/AppLoader/AppLoader.swift
++++ b/node_modules/expo-updates/ios/EXUpdates/AppLoader/AppLoader.swift
+@@ -379,9 +379,16 @@ open class AppLoader: NSObject {
+               contents = try? Data(contentsOf: embeddedUrl)
+             }
+           }
+-          // This replaces the old force try
+-          if !UpdatesUtils.isNativeDebuggingEnabled() {
+-            assert(contents != nil)
++// iOS 26 PAC workaround (TPL-030): the embedded app.manifest lists
++          // assets (e.g. LogBox PNGs) that our DEV=false Debug-config IPA
++          // doesn't actually ship. On first launch, the asset-reconcile loop
++          // hits this branch and asserts because neither the Documents
++          // directory nor the embedded bundle has the file. Downgrade to a
++          // logged warning — the `if let contents` below already skips
++          // appending nil-content assets gracefully, so dropping the assert
++          // is safe; we lose the (dev-only LogBox) image at runtime.
++          if contents == nil {
++            self.logger.warn(message: "AppLoader: existing asset \(existingAsset.filename) not found on disk or in embedded bundle; skipping (likely stripped by DEV=false production bundle).")
+           }
+           if let contents = contents {
+             existingAsset.contentHash = UpdatesUtils.hexEncodedSHA256WithData(contents)
+diff --git a/node_modules/expo-updates/scripts/create-updates-resources-ios.sh b/node_modules/expo-updates/scripts/create-updates-resources-ios.sh
+index 525881f..3504fd6 100755
+--- a/node_modules/expo-updates/scripts/create-updates-resources-ios.sh
++++ b/node_modules/expo-updates/scripts/create-updates-resources-ios.sh
+@@ -2,18 +2,15 @@
+ 
+ set -eo pipefail
+ 
++# iOS 26 PAC workaround (TPL-029): we ship Debug buildConfiguration to link
++# PAC-safe Hermes, but the bundle is production (DEV=false, embedded JS, no
++# Metro). Force MODE=all so create-updates-resources-ios.sh writes the
++# embedded app.manifest expo-updates' EmbeddedAppLoader needs at runtime.
++# Without this, the app crashes at launch with "The embedded manifest is
++# invalid or could not be read."
++unset SKIP_BUNDLING
+ CREATE_UPDATES_RESOURCES_MODE="all"
+-
+-if [[ "$SKIP_BUNDLING" ]]; then
+-  echo "SKIP_BUNDLING enabled; skipping create-manifest-ios.sh."
+-  CREATE_UPDATES_RESOURCES_MODE="only-fingerprint"
+-elif [[ "$CONFIGURATION" == *Debug* ]]; then
+-  if [[ "$FORCE_BUNDLING" ]]; then
+-    echo "FORCE_BUNDLING enabled; continuing create-manifest-ios.sh."
+-  else
+-    CREATE_UPDATES_RESOURCES_MODE="only-fingerprint"
+-  fi
+-fi
++echo "iOS 26 PAC workaround: forcing CREATE_UPDATES_RESOURCES_MODE=all"
+ 
+ EXPO_UPDATES_PACKAGE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+ 

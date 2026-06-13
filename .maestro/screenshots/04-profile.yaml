@@ -1,0 +1,18 @@
+appId: ${MAESTRO_APP_ID}
+name: screenshot-profile
+---
+# Navigate to Profile screen and capture screenshot.
+# TODO: Replace navigation steps with app-specific commands once real routes exist.
+# NOTE: This flow assumes the user is already authenticated. Run after 01-home if needed.
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 3000
+# TODO: Navigate to the Profile tab or screen.
+# Example:
+#   - tapOn:
+#       id: "tab-profile"
+# TODO: Wait for profile data to load (network settle).
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: screenshots/_raw/${MAESTRO_PLATFORM}/04-profile

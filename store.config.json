@@ -1,0 +1,96 @@
+{
+  "configVersion": 0,
+  "apple": {
+    "info": {
+      "en-US": {
+        "title": "{{appName}}",
+        "subtitle": "{{subtitle}}",
+        "description": "{{description}}",
+        "keywords": ["{{keyword1}}", "{{keyword2}}", "{{keyword3}}"],
+        "marketingUrl": "{{marketingUrl}}",
+        "supportUrl": "{{supportUrl}}",
+        "privacyPolicyUrl": "{{privacyPolicyUrl}}",
+"releaseNotes": "Initial release.",
+        "screenshots": {
+          "iphone6_7": [
+            "screenshots/ios/6.7-inch/01-home.png",
+            "screenshots/ios/6.7-inch/02-signup.png",
+            "screenshots/ios/6.7-inch/03-paywall.png",
+            "screenshots/ios/6.7-inch/04-profile.png",
+            "screenshots/ios/6.7-inch/05-settings.png"
+          ],
+          "iphone5_5": [
+            "screenshots/ios/5.5-inch/01-home.png",
+            "screenshots/ios/5.5-inch/02-signup.png",
+            "screenshots/ios/5.5-inch/03-paywall.png",
+            "screenshots/ios/5.5-inch/04-profile.png",
+            "screenshots/ios/5.5-inch/05-settings.png"
+          ]
+        }
+      }
+    },
+    "categories": ["{{primaryCategory}}", "{{secondaryCategory}}"],
+    "advisory": {
+      "alcoholTobaccoOrDrugUseOrReferences": "NONE",
+      "contests": "NONE",
+      "gamblingSimulated": "NONE",
+      "horrorOrFearThemes": "NONE",
+      "matureOrSuggestiveThemes": "NONE",
+      "medicalOrTreatmentInformation": "NONE",
+      "profanityOrCrudeHumor": "NONE",
+      "sexualContentGraphicAndNudity": "NONE",
+      "sexualContentOrNudity": "NONE",
+      "violenceCartoonOrFantasy": "NONE",
+      "violenceRealistic": "NONE",
+      "violenceRealisticProlongedGraphicOrSadistic": "NONE",
+      "gambling": false,
+      "unrestrictedWebAccess": false,
+      "kidsAgeBand": null
+    },
+    "copyright": "© {{year}} {{owner}}"
+  },
+  "googlePlay": {
+    "info": {
+      "en-US": {
+        "title": "{{appName}}",
+        "shortDescription": "{{shortDescription}}",
+        "fullDescription": "{{description}}",
+"video": null,
+        "graphics": {
+          "phoneScreenshots": [
+            "screenshots/android/phone/01-home.png",
+            "screenshots/android/phone/02-signup.png",
+            "screenshots/android/phone/03-paywall.png",
+            "screenshots/android/phone/04-profile.png",
+            "screenshots/android/phone/05-settings.png"
+          ],
+          "sevenInchScreenshots": [
+            "screenshots/android/7-inch-tablet/01-home.png",
+            "screenshots/android/7-inch-tablet/02-signup.png",
+            "screenshots/android/7-inch-tablet/03-paywall.png",
+            "screenshots/android/7-inch-tablet/04-profile.png",
+            "screenshots/android/7-inch-tablet/05-settings.png"
+          ],
+          "tenInchScreenshots": [
+            "screenshots/android/10-inch-tablet/01-home.png",
+            "screenshots/android/10-inch-tablet/02-signup.png",
+            "screenshots/android/10-inch-tablet/03-paywall.png",
+            "screenshots/android/10-inch-tablet/04-profile.png",
+            "screenshots/android/10-inch-tablet/05-settings.png"
+          ]
+        }
+      }
+    },
+    "categoryType": "{{playCategory}}",
+    "contactDetails": {
+      "email": "{{contactEmail}}",
+      "phoneNumber": "{{contactPhone}}",
+      "website": "{{contactWebsite}}"
+    },
+    "contentRating": {
+      "rating": "Everyone",
+      "ageGroup": "Everyone",
+      "containsAds": false
+    }
+  }
+}
