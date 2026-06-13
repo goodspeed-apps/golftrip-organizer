@@ -1,4 +1,3 @@
-// @ts-expect-error storybook v8+ required
 import type { Meta, StoryObj } from '@storybook/react';
 import { Button } from '../components/ui/Button';
 

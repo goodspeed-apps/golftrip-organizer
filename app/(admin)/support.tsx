@@ -28,7 +28,6 @@ interface Thread {
   status: string | null;
   created_at: string | null;
   updated_at: string | null;
-  // Supabase returns the joined relation as an array or single object depending on query shape
   profiles?: { display_name: string | null } | { display_name: string | null }[] | null;
 }
 
@@ -50,11 +49,8 @@ export default function AdminSupportScreen() {
   const [reply, setReply] = useState('');
   const [sending, setSending] = useState(false);
 
-const fetchThreads = useCallback(async () => {
+  const fetchThreads = useCallback(async () => {
     setLoading(true);
-    // Disambiguate the FK to public.profiles (added in migration 012); the
-    // base feedback_threads.user_id FK points at auth.users which PostgREST
-    // can't traverse from the anon schema.
     const { data } = await supabase
       .from('feedback_threads')
       .select('id, subject, status, created_at, updated_at, profiles!feedback_threads_user_id_profiles_fk(display_name)')
@@ -77,13 +73,11 @@ const fetchThreads = useCallback(async () => {
     setMsgLoading(false);
   }, []);
 
-const sendReply = useCallback(async () => {
+  const sendReply = useCallback(async () => {
     if (!active || !reply.trim()) return;
     setSending(true);
     const { data: session } = await supabase.auth.getSession();
     const uid = session.session?.user?.id;
-    // Round-tripping select().single() avoids re-fetching the entire thread
-    // after every reply; we just append the new row to local state.
     const { data: inserted, error } = await supabase
       .from('feedback_messages')
       .insert({
@@ -104,8 +98,6 @@ const sendReply = useCallback(async () => {
   const markResolved = useCallback(async () => {
     if (!active) return;
     const previousStatus = active.status;
-    // Optimistic update with revert-on-failure: snapshot the prior status so
-    // a network failure rolls the badge back instead of stranding a stale UI.
     setActive(prev => prev ? { ...prev, status: 'resolved' } : prev);
     setThreads(prev => prev.map(t => t.id === active.id ? { ...t, status: 'resolved' } : t));
     const { error } = await supabase.from('feedback_threads').update({ status: 'resolved' }).eq('id', active.id);
@@ -115,90 +107,118 @@ const sendReply = useCallback(async () => {
     }
   }, [active]);
 
+  const getDisplayName = (thread: Thread): string => {
+    if (!thread.profiles) return 'Unknown';
+    if (Array.isArray(thread.profiles)) {
+      return thread.profiles[0]?.display_name ?? 'Unknown';
+    }
+    return thread.profiles.display_name ?? 'Unknown';
+  };
+
   const styles = StyleSheet.create({
-    adminReplyText: {
-      color: colors.textOnPrimary,
-    },
+    container: { flex: 1, backgroundColor: colors.background },
+    listContent: { padding: 16, gap: 12 },
+    threadCard: { padding: 16 },
+    subject: { fontSize: 16, fontWeight: '600', color: colors.text },
+    meta: { fontSize: 13, color: colors.textSecondary, marginTop: 4 },
+    badge: { alignSelf: 'flex-start', marginTop: 8, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+    badgeText: { fontSize: 12, fontWeight: '600' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    modalSheet: { backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '85%' },
+    modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, borderBottomWidth: 1, borderBottomColor: colors.border },
+    modalTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
+    msgList: { padding: 16, gap: 10 },
+    msgBubble: { maxWidth: '80%', padding: 12, borderRadius: 16 },
+    msgText: { fontSize: 14 },
+    msgMeta: { fontSize: 11, marginTop: 4, opacity: 0.6 },
+    replyRow: { flexDirection: 'row', gap: 10, padding: 16, borderTopWidth: 1, borderTopColor: colors.border },
+    replyInput: { flex: 1, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, color: colors.text },
+    closeBtn: { padding: 4 },
   });
 
+  const renderThread = ({ item }: { item: Thread }) => {
+    const isOpen = item.status !== 'resolved';
+    return (
+      <TouchableOpacity onPress={() => openThread(item)}>
+        <Card style={styles.threadCard}>
+          <Text style={styles.subject}>{item.subject ?? '(no subject)'}</Text>
+          <Text style={styles.meta}>From: {getDisplayName(item)}</Text>
+          <Text style={styles.meta}>{item.updated_at ? new Date(item.updated_at).toLocaleDateString() : ''}</Text>
+          <View style={[styles.badge, { backgroundColor: isOpen ? colors.primaryMuted : colors.successMuted }]}>
+            <Text style={[styles.badgeText, { color: isOpen ? colors.primary : colors.success }]}>
+              {isOpen ? 'Open' : 'Resolved'}
+            </Text>
+          </View>
+        </Card>
+      </TouchableOpacity>
+    );
+  };
+
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <Text style={{ fontSize: 24, fontWeight: '700', color: colors.text, padding: 16 }}>Support Threads</Text>
+    <View style={styles.container}>
       {loading ? (
-        <ActivityIndicator style={{ marginTop: 32 }} />
+        <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} />
       ) : (
         <VirtualList
           data={threads}
-          keyExtractor={(t) => t.id}
-          renderItem={({ item }) => (
-            <Card style={{ margin: 8 }}>
-              <TouchableOpacity onPress={() => openThread(item)} style={{ padding: 12 }}>
-                <Text style={{ fontWeight: '600', color: colors.text }}>{item.subject ?? '(no subject)'}</Text>
-                <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 4 }}>
-                  Status: {item.status ?? 'open'} · {item.updated_at ? new Date(item.updated_at).toLocaleDateString() : ''}
-                </Text>
-              </TouchableOpacity>
-            </Card>
-          )}
+          renderItem={renderThread}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={<Text style={{ textAlign: 'center', color: colors.textSecondary, marginTop: 40 }}>No support threads yet.</Text>}
         />
       )}
 
-      {/* Thread Modal */}
-      <Modal visible={!!active} animationType="slide" onRequestClose={() => setActive(null)}>
-        <View style={{ flex: 1, backgroundColor: colors.background }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, paddingTop: 56, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, flex: 1 }} numberOfLines={1}>{active?.subject ?? '(no subject)'}</Text>
-            <Button title="Resolve" onPress={markResolved} style={{ marginLeft: 8 }} />
-            <TouchableOpacity onPress={() => setActive(null)} style={{ padding: 8, marginLeft: 8 }}>
-              <Text style={{ color: colors.primary, fontWeight: '600' }}>Close</Text>
-            </TouchableOpacity>
-          </View>
+      <Modal visible={!!active} animationType="slide" transparent onRequestClose={() => setActive(null)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{active?.subject ?? '(no subject)'}</Text>
+              <TouchableOpacity style={styles.closeBtn} onPress={() => setActive(null)}>
+                <Text style={{ color: colors.textSecondary, fontSize: 16 }}>✕</Text>
+              </TouchableOpacity>
+            </View>
 
-          {msgLoading ? (
-            <ActivityIndicator style={{ marginTop: 32 }} />
-          ) : (
-            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 12 }}>
-              {messages.map((msg) => {
-                const isAdmin = msg.author_role === 'admin';
-                return (
-                  <View
-                    key={msg.id}
-                    style={{
-                      alignSelf: isAdmin ? 'flex-end' : 'flex-start',
-                      backgroundColor: isAdmin ? colors.primary : colors.surface,
-                      borderRadius: 12,
-                      padding: 12,
-                      maxWidth: '80%',
-                    }}
-                  >
-                    <Text style={{ color: isAdmin ? colors.textOnPrimary : colors.text }}>{msg.body}</Text>
-                    <Text style={{ color: isAdmin ? colors.textOnPrimary : colors.textSecondary, fontSize: 11, marginTop: 4, opacity: 0.7 }}>
-                      {msg.author_role} · {msg.created_at ? new Date(msg.created_at).toLocaleTimeString() : ''}
-                    </Text>
-                  </View>
-                );
-              })}
-            </ScrollView>
-          )}
+            {msgLoading ? (
+              <ActivityIndicator style={{ margin: 24 }} color={colors.primary} />
+            ) : (
+              <ScrollView contentContainerStyle={styles.msgList}>
+                {messages.map(msg => {
+                  const isAdmin = msg.author_role === 'admin';
+                  return (
+                    <View key={msg.id} style={[styles.msgBubble, { alignSelf: isAdmin ? 'flex-end' : 'flex-start', backgroundColor: isAdmin ? colors.primary : colors.surface }]}>
+                      <Text style={[styles.msgText, { color: isAdmin ? '#fff' : colors.text }]}>{msg.body}</Text>
+                      <Text style={[styles.msgMeta, { color: isAdmin ? 'rgba(255,255,255,0.7)' : colors.textSecondary }]}>
+                        {msg.author_role} · {msg.created_at ? new Date(msg.created_at).toLocaleTimeString() : ''}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            )}
 
-          <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: colors.border, gap: 8 }}>
-            <TextInput
-              value={reply}
-              onChangeText={setReply}
-              placeholder="Type a reply…"
-              placeholderTextColor={colors.placeholder}
-              multiline
-              style={{
-                backgroundColor: colors.surface,
-                borderRadius: 8,
-                padding: 12,
-                color: colors.text,
-                minHeight: 80,
-                borderWidth: 1,
-                borderColor: colors.border,
-              }}
-            />
-            <Button title={sending ? 'Sending…' : 'Send Reply'} onPress={sendReply} disabled={sending || !reply.trim()} />
+            <View style={styles.replyRow}>
+              <TextInput
+                style={styles.replyInput}
+                value={reply}
+                onChangeText={setReply}
+                placeholder="Reply as admin…"
+                placeholderTextColor={colors.textSecondary}
+                multiline
+              />
+              <Button
+                label="Send"
+                onPress={sendReply}
+                style={{ marginLeft: 8 }}
+              />
+            </View>
+
+            <View style={{ padding: 16, paddingTop: 0 }}>
+              <Button
+                label="Mark Resolved"
+                onPress={markResolved}
+                disabled={active?.status === 'resolved'}
+              />
+            </View>
           </View>
         </View>
       </Modal>

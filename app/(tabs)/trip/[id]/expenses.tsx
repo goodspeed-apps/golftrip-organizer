@@ -20,9 +20,35 @@ import { SettlementCard } from '@/components/SettlementCard';
 
 const CATEGORIES = ['All', 'Green Fees', 'Cart', 'Lodging', 'Meals', 'Side Bets', 'Misc'] as const;
 
+type Expense = {
+  id: string;
+  description: string;
+  amount_cents: number;
+  category: string;
+  split_member_ids?: string[];
+  split_type?: string;
+  expense_date?: string;
+  paid_by_member_id?: string;
+};
+
+type Settlement = {
+  id: string;
+  from_member_id: string;
+  to_member_id: string;
+  amount_cents: number;
+  settled: boolean;
+};
+
+type TripMember = {
+  id: string;
+  user_id: string;
+  guest_name: string | null;
+  role: string;
+};
+
 export default function ExpensesScreen() {
   const { id: tripId } = useLocalSearchParams<{ id: string }>();
-  const colors = useThemeColors();
+  const { colors } = useThemeColors();
   const { user } = useAuth();
   const { track } = useAnalytics();
   const { isSubscribed } = useSubscription();
@@ -40,7 +66,7 @@ export default function ExpensesScreen() {
     if (!tripId) return;
     const start = Date.now();
     try {
-      const end = trackApiLatency('fetch_expenses', start);
+      const end = trackApiLatency('fetch_expenses');
       const [expRes, settleRes, memRes] = await Promise.all([
         supabase.from('expenses').select('*').eq('trip_id', tripId).order('expense_date', { ascending: false }),
         supabase.from('expense_settlements').select('*').eq('trip_id', tripId),
@@ -85,83 +111,107 @@ export default function ExpensesScreen() {
   const filtered = activeCategory === 'All' ? expenses : expenses.filter(e => e.category === activeCategory);
 
   const handleMarkSettled = async (settlementId: string) => {
-    if (!isOrganizer && !isSubscribed) { router.push('/(modal)/paywall'); return; }
-    track('mark_settled', { settlementId, tripId });
     try {
-      const { error } = await supabase.from('expense_settlements').update({ is_paid: true, paid_at: new Date().toISOString() }).eq('id', settlementId);
+      const { error } = await supabase
+        .from('expense_settlements')
+        .update({ settled: true })
+        .eq('id', settlementId);
       if (error) throw error;
-      setSettlements(prev => prev.map(s => s.id === settlementId ? { ...s, is_paid: true } : s));
-      showToast('Balance marked as settled ✓', 'success');
+      setSettlements(prev => prev.map(s => s.id === settlementId ? { ...s, settled: true } : s));
+      showToast({ type: 'success', message: 'Marked as settled!' });
+      track('expense_settled', { settlement_id: settlementId });
     } catch (err) {
       captureException(err, { screen: 'expenses', action: 'markSettled' });
-      showToast('Failed to update. Try again.', 'error');
+      showToast({ type: 'error', message: 'Failed to mark as settled.' });
     }
   };
 
-  if (loading) return <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}><LoadingSkeleton variant="list" /></SafeAreaView>;
+  const scale = useSharedValue(1);
+  const fabStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  if (loading) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+        <LoadingSkeleton variant="card" count={4} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* Summary Banner */}
-      <View style={{ backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 16 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <View>
-            <Text style={{ color: colors.textOnPrimary, fontSize: 12, fontFamily: 'Inter_400Regular', opacity: 0.8 }}>Trip Total</Text>
-            <Text style={{ color: colors.textOnPrimary, fontSize: 24, fontFamily: 'PlusJakartaSans_700Bold' }}>${((totalCents ?? 0) / 100).toFixed(2)}</Text>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={{ color: colors.textOnPrimary, fontSize: 12, fontFamily: 'Inter_400Regular', opacity: 0.8 }}>My Share</Text>
-            <Text style={{ color: colors.textOnPrimary, fontSize: 24, fontFamily: 'PlusJakartaSans_700Bold' }}>${(myShare / 100).toFixed(2)}</Text>
-          </View>
-        </View>
-      </View>
-
       <FlatList
         data={filtered}
-        keyExtractor={item => item.id}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        keyExtractor={(item) => item.id}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListHeaderComponent={
-          <Animated.View entering={FadeInDown.duration(300)}>
-            <ExpenseCategoryChips categories={CATEGORIES as unknown as string[]} active={activeCategory} onSelect={setActiveCategory} />
-            {error && (
-              <View style={{ margin: 16, padding: 16, backgroundColor: colors.warningMuted, borderRadius: 12 }}>
-                <Text style={{ color: colors.warning, fontFamily: 'Inter_400Regular', fontSize: 14 }}>{error}</Text>
-                <Pressable onPress={fetchData} accessibilityLabel="Retry loading expenses" accessibilityHint="Fetches expenses again">
-                  <Text style={{ color: colors.primary, fontFamily: 'Inter_400Regular', fontSize: 14, marginTop: 8 }}>Retry</Text>
-                </Pressable>
+          <View>
+            {/* Summary */}
+            <View style={{ padding: 16, backgroundColor: colors.card, margin: 16, borderRadius: 14 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <View>
+                  <Text style={{ fontSize: 13, color: colors.textSecondary }}>Total Expenses</Text>
+                  <Text style={{ fontSize: 22, fontWeight: '700', color: colors.text }}>${(totalCents / 100).toFixed(2)}</Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={{ fontSize: 13, color: colors.textSecondary }}>My Share</Text>
+                  <Text style={{ fontSize: 22, fontWeight: '700', color: colors.primary }}>${(myShare / 100).toFixed(2)}</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Settlements */}
+            {settlements.filter(s => !s.settled).length > 0 && (
+              <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text, marginBottom: 8 }}>Settlements</Text>
+                {settlements.filter(s => !s.settled).map(s => (
+                  <SettlementCard
+                    key={s.id}
+                    settlement={s}
+                    members={members}
+                    onSettle={() => handleMarkSettled(s.id)}
+                  />
+                ))}
               </View>
             )}
-          </Animated.View>
+
+            {/* Category Filter */}
+            <ExpenseCategoryChips
+              categories={[...CATEGORIES]}
+              active={activeCategory}
+              onSelect={setActiveCategory}
+            />
+
+            {error && (
+              <Text style={{ color: colors.error ?? 'red', textAlign: 'center', padding: 12 }}>{error}</Text>
+            )}
+          </View>
         }
-        renderItem={({ item, index }) => (
-          <Animated.View entering={FadeInDown.delay(50 * index).duration(300)}>
-            <ExpenseRow expense={item} members={members} />
-          </Animated.View>
+        ListEmptyComponent={
+          <EmptyState
+            title="No expenses yet"
+            description="Add your first expense to start tracking costs."
+          />
+        }
+        renderItem={({ item }) => (
+          <ExpenseRow
+            expense={item}
+            members={members}
+            onPress={() => router.push(`/(modal)/expense-detail?expenseId=${item.id}`)}
+          />
         )}
-        ListEmptyComponent={!error ? <EmptyState icon="receipt" title="No expenses yet" description="Add your first expense to start splitting costs with your group." /> : null}
-        ListFooterComponent={
-          settlements.length > 0 ? (
-            <Animated.View entering={FadeInDown.delay(200).duration(300)}>
-              <SettlementCard settlements={settlements} members={members} onMarkSettled={handleMarkSettled} isOrganizer={!!isOrganizer} />
-            </Animated.View>
-          ) : null
-        }
-        contentContainerStyle={{ paddingBottom: 100 }}
       />
 
       {/* FAB */}
-      <Pressable
-        onPress={() => { track('tap_add_expense', { tripId }); router.push(`/(modal)/add-expense?tripId=${tripId}`); }}
-        accessibilityLabel="Add expense"
-        accessibilityHint="Opens a form to log a new trip expense"
-        style={{ position: 'absolute', bottom: 28, right: 24, backgroundColor: colors.primary, width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', shadowColor: colors.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 }}
-      >
-        <Plus size={24} color={colors.textOnPrimary} />
-      </Pressable>
+      <Animated.View style={[fabStyle, { position: 'absolute', bottom: 24, right: 24 }]}>
+        <Pressable
+          onPress={() => router.push(`/(modal)/add-expense?tripId=${tripId}`)}
+          onPressIn={() => { scale.value = withSpring(0.92); }}
+          onPressOut={() => { scale.value = withSpring(1); }}
+          style={{ backgroundColor: colors.primary, width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8, elevation: 6 }}
+        >
+          <Plus size={28} color="#fff" />
+        </Pressable>
+      </Animated.View>
     </SafeAreaView>
   );
 }
-
-interface Expense { id: string; category: string; description: string; amount_cents: number; paid_by_member_id: string; split_type: string; split_member_ids: string[]; expense_date: string; is_settled: boolean; }
-interface Settlement { id: string; from_member_id: string; to_member_id: string; amount_cents: number; currency: string; is_paid: boolean; venmo_deeplink?: string; paypal_deeplink?: string; }
-interface TripMember { id: string; user_id: string; guest_name?: string; role: string; }

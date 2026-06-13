@@ -126,112 +126,83 @@ export default function DashboardScreen() {
     return 'Good evening';
   };
 
-  const styles = makeStyles(colors);
-
   if (loading) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.header}><Text style={styles.greetingText}>Loading...</Text></View>
-        <LoadingSkeleton variant="card" count={2} />
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.colors.background }}>
+        <LoadingSkeleton variant="card" count={3} />
       </SafeAreaView>
     );
   }
 
-  const hasAny = upcomingTrips.length > 0 || pastTrips.length > 0;
-
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.colors.background }}>
       <FlatList
-        data={pastTrips}
+        data={upcomingTrips}
         keyExtractor={(item) => item.id}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-        ListHeaderComponent={
-          <>
-            <Animated.View entering={FadeInDown.delay(0).springify()} style={styles.header}>
-              <View>
-                <Text style={styles.greetingText}>{greeting()},</Text>
-                <Text style={styles.nameText}>{user?.user_metadata?.display_name ?? 'Golfer'} 🏌️</Text>
-              </View>
-            </Animated.View>
-
-            {error && (
-              <Animated.View entering={FadeInDown.delay(50)} style={styles.errorCard}>
-                <Text style={styles.errorText}>{error}</Text>
-              </Animated.View>
-            )}
-
-            <Animated.View entering={FadeInDown.delay(100).springify()}>
-              <Text style={styles.sectionLabel}>Upcoming Trips</Text>
-            </Animated.View>
-
-            {upcomingTrips.length === 0 && !error ? (
-              <Animated.View entering={FadeInDown.delay(150).springify()}>
-                <EmptyState
-                  icon={<Flag size={40} color={colors.primary} />}
-                  title="No trips on the calendar yet"
-                  description="Create your first trip and invite your crew, it only takes a minute."
-                  action={{ label: 'Create a Trip', onPress: handleCreateTrip }}
-                />
-              </Animated.View>
-            ) : (
-              upcomingTrips.map((trip, i) => (
-                <Animated.View key={trip.id} entering={FadeInDown.delay(150 + i * 50).springify()}>
-                  <TripHeroCard
-                    trip={trip}
-                    onPress={() => {
-                      track('tap_trip_card', { trip_id: trip.id });
-                      router.push(`/(tabs)/trip/${trip.id}/itinerary` as never);
-                    }}
-                  />
-                </Animated.View>
-              ))
-            )}
-
-            {pastTrips.length > 0 && (
-              <Animated.View entering={FadeInDown.delay(300).springify()}>
-                <Text style={[styles.sectionLabel, { marginTop: spacing.lg }]}>Past Trips</Text>
-              </Animated.View>
-            )}
-          </>
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.colors.primary}
+          />
         }
-        renderItem={({ item, index }) => (
-          <Animated.View entering={FadeInDown.delay(350 + index * 50).springify()}>
-            <PastTripRow
-              trip={item}
-              onPress={() => {
-                track('tap_past_trip', { trip_id: item.id });
-                router.push(`/(tabs)/trip/${item.id}/itinerary` as never);
-              }}
-              onLongPress={() => handleLongPressPast(item)}
-            />
+        ListHeaderComponent={
+          <View style={{ padding: 20 }}>
+            <Text style={{ fontSize: 28, fontWeight: '800', color: colors.colors.text }}>
+              {greeting()}, {user?.user_metadata?.display_name ?? 'Golfer'} 👋
+            </Text>
+            <Text style={{ color: colors.colors.textSecondary, marginTop: 4 }}>
+              {upcomingTrips.length > 0
+                ? `You have ${upcomingTrips.length} upcoming trip${upcomingTrips.length > 1 ? 's' : ''}`
+                : 'No upcoming trips — time to plan one!'}
+            </Text>
+          </View>
+        }
+        renderItem={({ item }) => (
+          <Animated.View entering={FadeInDown}>
+            <TripHeroCard trip={item} onPress={() => router.push(`/(tabs)/trip/${item.id}/itinerary`)} />
           </Animated.View>
         )}
-        ListEmptyComponent={!hasAny && !error ? null : undefined}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <EmptyState
+            title="No upcoming trips"
+            description="Create a trip to get started with your crew."
+            actionLabel="Create Trip"
+            onAction={handleCreateTrip}
+          />
+        }
+        ListFooterComponent={
+          pastTrips.length > 0 ? (
+            <View style={{ padding: 20 }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.colors.text, marginBottom: 12 }}>Past Trips</Text>
+              {pastTrips.map((trip) => (
+                <PastTripRow
+                  key={trip.id}
+                  trip={trip}
+                  onPress={() => router.push(`/(tabs)/trip/${trip.id}/itinerary`)}
+                  onLongPress={() => handleLongPressPast(trip)}
+                />
+              ))}
+            </View>
+          ) : null
+        }
       />
 
       <Pressable
         onPress={handleCreateTrip}
-        accessibilityLabel="Create a new trip"
-        accessibilityHint="Opens the trip creation form"
-        style={({ pressed }) => [styles.fab, { transform: [{ scale: pressed ? 0.94 : 1 }] }]}
+        style={{
+          position: 'absolute', bottom: 28, right: 20,
+          width: 56, height: 56, borderRadius: 28,
+          backgroundColor: colors.colors.primary,
+          alignItems: 'center', justifyContent: 'center',
+          shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
+          elevation: 6,
+        }}
       >
-        <Plus size={24} color={colors.textOnPrimary} />
+        <Plus size={26} color="#fff" />
       </Pressable>
     </SafeAreaView>
   );
 }
 
-const makeStyles = (colors: ReturnType<typeof useThemeColors>) =>
-  StyleSheet.create({
-    safe: { flex: 1, backgroundColor: colors.background },
-    listContent: { paddingBottom: 100, paddingHorizontal: spacing.md },
-    header: { paddingTop: spacing.lg, paddingBottom: spacing.md },
-    greetingText: { fontSize: 16, fontFamily: 'Manrope_400Regular', color: colors.textSecondary },
-    nameText: { fontSize: 26, fontFamily: 'Outfit_700Bold', color: colors.text, marginTop: 2 },
-    sectionLabel: { fontSize: 13, fontFamily: 'Manrope_600SemiBold', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: spacing.sm },
-    errorCard: { backgroundColor: colors.warningMuted, borderRadius: radii.md, padding: spacing.md, marginBottom: spacing.md },
-    errorText: { fontFamily: 'Manrope_400Regular', color: colors.warning, fontSize: 14 },
-    fab: { position: 'absolute', bottom: spacing.xl, right: spacing.lg, width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', shadowColor: colors.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 6 },
-  });
+const styles = StyleSheet.create({});
