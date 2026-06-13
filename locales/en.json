@@ -1,0 +1,57 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "retry": "Try Again",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "done": "Done",
+    "next": "Next",
+    "back": "Back",
+    "skip": "Skip",
+    "search": "Search",
+    "noResults": "No results found",
+    "pullToRefresh": "Pull to refresh"
+  },
+  "auth": {
+    "login": "Log In",
+    "signup": "Sign Up",
+    "logout": "Sign Out",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "forgotPassword": "Forgot Password?",
+    "continueWithGoogle": "Continue with Google",
+    "continueWithApple": "Continue with Apple",
+    "continueWithTwitter": "Continue with X",
+    "checkYourEmail": "Check your email",
+    "verificationSent": "We sent a verification link to your email",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?"
+  },
+  "settings": {
+    "title": "Settings",
+    "appearance": "Appearance",
+    "darkMode": "Dark Mode",
+    "lightMode": "Light Mode",
+    "systemMode": "System",
+    "notifications": "Notifications",
+    "pushNotifications": "Push Notifications",
+    "biometricLock": "Biometric Lock",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "dataExport": "Export My Data",
+    "deleteAccount": "Delete Account",
+    "signOut": "Sign Out",
+    "version": "Version"
+  },
+"subscription": {
+    "free": "Free",
+    "upgrade": "Upgrade",
+    "restore": "Restore Purchases",
+    "startTrial": "Start Free Trial",
+    "subscribe": "Subscribe"
+  },
+  "greeting": "Hello"
+}

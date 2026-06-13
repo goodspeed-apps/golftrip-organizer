@@ -1,0 +1,9 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Template-known false positives"
+paths = [
+  '''.env.example''',
+  '''__tests__/__mocks__/''',
+]

@@ -1,0 +1,26 @@
+export const EVENTS = {
+  app_opened: 'app_opened',
+  onboarding_started: 'onboarding_started',
+  onboarding_step: 'onboarding_step',
+  onboarding_completed: 'onboarding_completed',
+  first_value_moment: 'first_value_moment',
+  ota_rolled_back: 'ota_rolled_back',
+  signed_up: 'signed_up',
+  signed_in: 'signed_in',
+  paywall_viewed: 'paywall_viewed',
+  paywall_purchased: 'paywall_purchased',
+  subscription_canceled: 'subscription_canceled',
+  feedback_submitted: 'feedback_submitted',
+  share_completed: 'share_completed',
+  referral_attributed: 'referral_attributed',
+  experiment_assigned: 'experiment_assigned',
+  llm_call: 'llm_call',
+  oauth_connected: 'oauth_connected',
+push_token_registered: 'push_token_registered',
+  push_registered: 'push_registered',
+  push_unregistered: 'push_unregistered',
+  push_received: 'push_received',
+  push_tapped: 'push_tapped',
+} as const;
+
+export type EventName = (typeof EVENTS)[keyof typeof EVENTS];

@@ -1,0 +1,29 @@
+diff --git a/node_modules/expo/ios/EXAppDefinesLoader.m b/node_modules/expo/ios/EXAppDefinesLoader.m
+index dd1ee3f..9fb5512 100644
+--- a/node_modules/expo/ios/EXAppDefinesLoader.m
++++ b/node_modules/expo/ios/EXAppDefinesLoader.m
+@@ -10,15 +10,17 @@ @implementation EXAppDefinesLoader
+ 
+ + (void)load
+ {
+-  BOOL APP_DEBUG;
++BOOL APP_DEBUG;
++  // iOS 26 PAC workaround: we ship Debug buildConfiguration to link PAC-safe
++  // Hermes binary, but the bundle is production (DEV=false, embedded JS, no
++  // Metro). Force APP_DEBUG=NO so expo-updates and other Expo modules treat
++  // this as a production build. Without this, expo-updates installs
++  // DisabledAppController and OTA can never apply.
++  // See hermes#1966, expo#44356/44606/44680.
+   [EXAppDefines load:@{
+-#if DEBUG
+-    @"APP_DEBUG": @(YES),
+-#else
+     @"APP_DEBUG": @(NO),
+-#endif
+-    @"APP_RCT_DEBUG": @(RCT_DEBUG),
+-    @"APP_RCT_DEV": @(RCT_DEV),
++    @"APP_RCT_DEBUG": @(NO),
++    @"APP_RCT_DEV": @(NO),
+ #if RCT_NEW_ARCH_ENABLED
+     @"APP_NEW_ARCH_ENABLED": @(YES),
+ #else
