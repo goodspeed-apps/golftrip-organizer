@@ -41,7 +41,7 @@ jobs:
       # ── iOS ──────────────────────────────────────────────────────────────────
       - name: Cache Xcode derived data
         if: matrix.platform == 'ios'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/Library/Developer/Xcode/DerivedData
           key: xcode-derived-${{ runner.os }}-${{ hashFiles('ios/Podfile.lock') }}
