@@ -23,7 +23,7 @@ jobs:
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm run build-storybook
-      - uses: chromaui/action@v11
+      - uses: chromaui/action@v17
         with:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           storybookBuildDir: storybook-static
