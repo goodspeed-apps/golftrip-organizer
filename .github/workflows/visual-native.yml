@@ -1,0 +1,92 @@
+name: Native Visual Regression
+
+on:
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'components/**'
+      - 'context/**'
+
+concurrency:
+  group: visual-native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  visual-native:
+    name: Owl (${{ matrix.platform }})
+    runs-on: ${{ matrix.platform == 'ios' && 'macos-14' || 'ubuntu-latest' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [ios, android]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # ── iOS ──────────────────────────────────────────────────────────────────
+      - name: Cache Xcode derived data
+        if: matrix.platform == 'ios'
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData
+          key: xcode-derived-${{ runner.os }}-${{ hashFiles('ios/Podfile.lock') }}
+          restore-keys: |
+            xcode-derived-${{ runner.os }}-
+
+      - name: Boot iOS simulator
+        if: matrix.platform == 'ios'
+        run: |
+          UDID=$(xcrun simctl list devices available --json \
+            | python3 -c "
+          import json, sys
+          data = json.load(sys.stdin)
+          for runtime, devices in data['devices'].items():
+            for d in devices:
+              if 'iPhone 15' in d['name'] and d['isAvailable']:
+                print(d['udid'])
+                sys.exit(0)
+          ")
+          if [ -z \"\$UDID\" ]; then
+            echo \"iPhone 15 simulator not found\" && exit 1
+          fi
+          xcrun simctl boot \"\$UDID\" || true
+          echo \"SIMULATOR_UDID=\$UDID\" >> \$GITHUB_ENV
+
+      - name: Run iOS visual tests
+        if: matrix.platform == 'ios'
+        run: pnpm visual:native -- --platform ios
+
+      # ── Android ──────────────────────────────────────────────────────────────
+      - name: Run Android visual tests
+        if: matrix.platform == 'android'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          script: pnpm visual:native -- --platform android
+
+      # ── Artifacts ─────────────────────────────────────────────────────────────
+      - name: Upload diff artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: owl-diffs-${{ matrix.platform }}-${{ github.run_id }}
+          path: __owl__/__snapshots__/
+          retention-days: 14

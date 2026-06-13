@@ -1,0 +1,12 @@
+appId: ${MAESTRO_APP_ID}
+name: rtl-smoke
+env:
+  EXPO_PUBLIC_FORCE_RTL: "true"
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    text: "Sign in"
+    optional: true
+- assertVisible:
+    text: "Email"
