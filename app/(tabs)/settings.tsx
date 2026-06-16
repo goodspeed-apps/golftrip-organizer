@@ -105,104 +105,94 @@ export default function SettingsScreen() {
   // --- Analytics: track screen view ---
   const screenStart = useRef(Date.now());
   useEffect(() => {
-    track('settings_screen_viewed');
+    track('settings_screen_view');
     trackScreenLoad('settings', screenStart.current);
   }, []);
 
   // --- Load notification preference from storage ---
   useEffect(() => {
-    AsyncStorage.getItem(NOTIF_KEY).then((v) => {
-      if (v !== null) setNotificationsEnabled(v === 'true');
+    AsyncStorage.getItem(NOTIF_KEY).then((val) => {
+      if (val !== null) setNotificationsEnabled(val === 'true');
     });
   }, []);
-
-  // --- Handlers ---
 
   const handleToggleNotifications = async (value: boolean) => {
     setNotificationsEnabled(value);
     await AsyncStorage.setItem(NOTIF_KEY, String(value));
-    track('notifications_toggled', { enabled: value });
+    track('toggle_notifications', { enabled: value });
   };
 
   const handleToggleBiometric = async (value: boolean) => {
     await setBiometricPreference(value);
-    track('biometric_toggled', { enabled: value });
+    track('toggle_biometric', { enabled: value });
+  };
+
+  const handleThemeChange = (value: 'dark' | 'light' | 'system') => {
+    setTheme(value);
+    track('change_theme', { theme: value });
+  };
+
+  const handleRateApp = async () => {
+    track('tap_rate_app');
+    addBreadcrumb('settings', 'rate_app');
+    const available = await StoreReview.isAvailableAsync();
+    if (available) {
+      await StoreReview.requestReview();
+    } else {
+      Alert.alert('Rate Us', 'Thank you for using the app!');
+    }
+  };
+
+  const handleCsvExport = async () => {
+    track('tap_csv_export');
+    Alert.alert('Export Data', 'Your data export will be emailed to you shortly.');
   };
 
   const handleSignOut = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Sign Out',
-        style: 'destructive',
+        text: 'Sign Out', style: 'destructive',
         onPress: async () => {
+          track('sign_out');
           await signOut();
-          track('signed_out');
         },
       },
     ]);
   };
 
-const handleDeleteAccount = () => {
+  const handleDeleteAccount = () => {
     Alert.alert(
       'Delete Account',
-      'This will schedule deletion of your account and all associated data per the deletion policy in your data rights settings. You can cancel within the grace period.',
+      'This will permanently delete your account and all data. This cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Delete',
-          style: 'destructive',
+          text: 'Delete', style: 'destructive',
           onPress: async () => {
             try {
-              track('account_deletion_requested');
+              track('delete_account');
               await requestAccountDeletion();
               await signOut();
-            } catch (err) {
-              captureException(err, { context: 'account_deletion' });
-              Alert.alert('Error', 'Failed to schedule deletion. Please try again or contact support.');
+            } catch (e) {
+              captureException(e as Error, { screen: 'settings', action: 'deleteAccount' });
+              Alert.alert('Error', 'Could not delete account. Please contact support.');
             }
           },
         },
-      ],
+      ]
     );
   };
 
-  const handleRateApp = async () => {
+  const handlePurchase = async () => {
+    if (!offerings?.current) return;
+    setPurchasing(true);
     try {
-      const isAvailable = await StoreReview.isAvailableAsync();
-      if (isAvailable) {
-        await StoreReview.requestReview();
-        track('store_review_prompted');
-      } else {
-        // Fallback: open app store listing
-        // DevAgent should replace this URL with the actual store listing
-        Alert.alert('Rate Us', 'Thank you for your support! Rating is not available on this device.');
-      }
-    } catch {
-      // Silently fail, store review is best-effort
-    }
-  };
-
-  const handleUpgrade = async () => {
-    track('upgrade_tapped', { from: 'settings' });
-    const current = offerings?.current;
-    if (!current || current.availablePackages.length === 0) {
-      Alert.alert('Upgrade', 'Subscriptions are being set up. Check back soon!', [{ text: 'OK' }]);
-      return;
-    }
-    const pkg = current.availablePackages[0];
-    if (!pkg) {
-      Alert.alert('No packages', 'No packages available.');
-      return;
-    }
-    try {
-      setPurchasing(true);
-      await purchase(pkg.identifier);
-      Alert.alert('Welcome to Pro!', 'Your subscription is now active.', [{ text: 'Thanks!' }]);
-    } catch (e: any) {
-      if (!e?.userCancelled) {
-        Alert.alert('Purchase failed', e?.message ?? 'Please try again.');
-      }
+      const pkg = offerings.current.availablePackages[0];
+      if (pkg) await purchase(pkg);
+      track('purchase_attempt', { screen: 'settings' });
+    } catch (e) {
+      captureException(e as Error, { screen: 'settings', action: 'purchase' });
     } finally {
       setPurchasing(false);
     }
@@ -210,491 +200,182 @@ const handleDeleteAccount = () => {
 
   const handleRestore = async () => {
     try {
-      setPurchasing(true);
       await restore();
-      Alert.alert('Restored', 'Your purchases have been restored.', [{ text: 'OK' }]);
-    } catch {
-      Alert.alert('Restore failed', 'No purchases found to restore.', [{ text: 'OK' }]);
-    } finally {
-      setPurchasing(false);
+      track('restore_purchases');
+      Alert.alert('Restored', 'Your purchases have been restored.');
+    } catch (e) {
+      captureException(e as Error, { screen: 'settings', action: 'restore' });
+      Alert.alert('Error', 'Could not restore purchases.');
     }
   };
 
-  const handleExportData = () => {
-    // TODO: DevAgent implements data export via Supabase edge function
-    track('data_export_requested');
-    Alert.alert(
-      'Data Export',
-      'Your data export has been requested. You will receive a download link via email.',
-    );
-  };
-
-  const handleCSVExport = () => {
-    if (tier === 'free' && inAppPurchases.enabled) {
-      Alert.alert('Pro Feature', 'Upgrade to Pro to export your data as CSV.', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Upgrade', onPress: handleUpgrade },
-      ]);
-      return;
-    }
-    // TODO: DevAgent implements CSV export
-    track('csv_export_requested');
-    Alert.alert('Export', 'CSV export is being prepared...');
-  };
-
-  // --- Derived values ---
-  const tierLabel = tier.charAt(0).toUpperCase() + tier.slice(1);
-  const tierColor = tier === 'free' ? colors.textSecondary : primary;
-  const displayName = user?.user_metadata?.full_name ?? user?.email ?? 'Account';
-  const isFreeUser = tier === 'free' || tier === (gasConfig.features.inAppPurchases.tiers[0]?.name.toLowerCase() ?? 'free');
-
-  // Get pro features from gasConfig tiers (second tier if available)
-  const proTier = gasConfig.features.inAppPurchases.tiers[1];
-  const proFeatures = proTier?.features ?? [];
-
-  // Legal URLs, read from config; hide each row when its URL is empty
-  // (never link to a placeholder like example.com).
-  const privacyUrl = gasConfig.legal?.privacyUrl?.trim() ?? '';
-  const termsUrl = gasConfig.legal?.termsUrl?.trim() ?? '';
+  const privacyUrl: string = (gasConfig as unknown as { legal?: { privacyUrl?: string } }).legal?.privacyUrl ?? '';
+  const termsUrl: string = (gasConfig as unknown as { legal?: { termsUrl?: string } }).legal?.termsUrl ?? '';
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 48 }}>
-        {/* Screen title */}
-        <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 8 }}>
-          <Text style={{ color: colors.text, fontSize: 28, fontWeight: '800', letterSpacing: -0.5 }}>
-            Settings
-          </Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+        {/* Header */}
+        <View style={{ padding: 20, paddingBottom: 0 }}>
+          <Text style={{ fontSize: 28, fontWeight: '800', color: colors.text }}>Settings</Text>
         </View>
 
-        {/* ── Profile Card ── */}
-        <View
-          style={{
-            marginHorizontal: 16,
-            marginBottom: 24,
-            backgroundColor: colors.surface,
-            borderRadius: 20,
-            padding: 20,
-            alignItems: 'center',
-            borderWidth: 1,
-            borderColor: colors.border,
-          }}
-        >
-          {/* Avatar circle */}
-          <View
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: 36,
-              backgroundColor: primary + '18',
-              borderWidth: 2,
-              borderColor: primary + '30',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: 12,
-            }}
-          >
-            <User size={32} color={primary} />
-          </View>
-          <Text style={{ color: colors.text, fontSize: 18, fontWeight: '700' }}>
-            {displayName}
-          </Text>
-          {/* Subscription tier badge */}
-          {inAppPurchases.enabled && (
-            <View
-              style={{
-                marginTop: 8,
-                backgroundColor: tierColor + '18',
-                borderRadius: 20,
-                paddingHorizontal: 14,
-                paddingVertical: 5,
-                borderWidth: 1,
-                borderColor: tierColor + '30',
-              }}
-            >
-              <Text style={{ color: tierColor, fontSize: 12, fontWeight: '700' }}>
-                {tierLabel} Plan
-              </Text>
-            </View>
+        {/* Profile Section */}
+        <SectionHeader title="Profile" />
+        <View style={{ marginHorizontal: 16, borderRadius: 12, backgroundColor: colors.surface, overflow: 'hidden' }}>
+          <SettingsRow
+            icon={<User size={18} color={primary} />}
+            label={user?.user_metadata?.display_name ?? user?.email ?? 'User'}
+            sublabel={user?.email}
+            onPress={() => {}}
+          />
+          {tier && (
+            <SettingsRow
+              icon={<Star size={18} color={primary} />}
+              label="Subscription"
+              value={tier}
+              onPress={() => {}}
+            />
           )}
         </View>
 
-        {/* ── Appearance (if darkMode enabled) ── */}
-        {darkMode.enabled && (
+        {/* Appearance Section */}
+        {darkMode?.enabled && (
           <>
             <SectionHeader title="Appearance" />
-            <View
-              style={{
-                marginHorizontal: 16,
-                backgroundColor: colors.surface,
-                borderRadius: 20,
-                overflow: 'hidden',
-                marginBottom: 20,
-                borderWidth: 1,
-                borderColor: colors.border,
-              }}
-            >
-              <View style={{ flexDirection: 'row', padding: 8, gap: 8 }}>
-                {THEME_OPTIONS.map((opt) => {
-                  const Icon = opt.icon;
-                  const active = preference === opt.value;
-                  return (
-                    <TouchableOpacity
-                      key={opt.value}
-                      style={{
-                        flex: 1,
-                        alignItems: 'center',
-                        paddingVertical: 12,
-                        borderRadius: 14,
-                        backgroundColor: active ? primary + '18' : 'transparent',
-                        borderWidth: 1,
-                        borderColor: active ? primary + '40' : 'transparent',
-                      }}
-                      onPress={() => setTheme(opt.value)}
-                      accessibilityLabel={`${opt.label} theme`}
-                    >
-                      <Icon size={18} color={active ? primary : colors.textSecondary} />
-                      <Text
-                        style={{
-                          color: active ? primary : colors.textSecondary,
-                          fontSize: 12,
-                          fontWeight: '600',
-                          marginTop: 5,
-                        }}
-                      >
-                        {opt.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+            <View style={{ marginHorizontal: 16, borderRadius: 12, backgroundColor: colors.surface, overflow: 'hidden' }}>
+              {THEME_OPTIONS.map((opt) => (
+                <SettingsRow
+                  key={opt.value}
+                  icon={<opt.icon size={18} color={primary} />}
+                  label={opt.label}
+                  value={preference === opt.value ? '✓' : undefined}
+                  onPress={() => handleThemeChange(opt.value)}
+                />
+              ))}
             </View>
           </>
         )}
 
-        {/* ── Preferences ── */}
+        {/* Preferences Section */}
         <SectionHeader title="Preferences" />
-        <View
-          style={{
-            marginHorizontal: 16,
-            backgroundColor: colors.surface,
-            borderRadius: 20,
-            overflow: 'hidden',
-            marginBottom: 20,
-            borderWidth: 1,
-            borderColor: colors.border,
-          }}
-        >
-          {/* Push Notifications toggle */}
-          {pushNotifications.enabled && (
+        <View style={{ marginHorizontal: 16, borderRadius: 12, backgroundColor: colors.surface, overflow: 'hidden' }}>
+          {pushNotifications?.enabled && (
             <SettingsRow
+              icon={<Bell size={18} color={primary} />}
               label="Push Notifications"
-              icon={Bell}
-              switchValue={notificationsEnabled}
-              onSwitchChange={handleToggleNotifications}
-              showBorder={biometricConfig.enabled || csvExportEnabled}
+              toggle={notificationsEnabled}
+              onToggle={handleToggleNotifications}
             />
           )}
-
-          {/* Biometric Lock toggle, only if hardware available */}
-          {biometricConfig.enabled && biometricAvailable && (
+          {biometricConfig?.enabled && biometricAvailable && (
             <SettingsRow
+              icon={<Shield size={18} color={primary} />}
               label="Biometric Lock"
-              description="Locks app after 5 min background"
-              icon={Shield}
-              iconColor={colors.primary}
-              iconBgColor={colors.primary + '15'}
-              switchValue={biometricEnabled}
-              onSwitchChange={handleToggleBiometric}
-              switchActiveColor={colors.primary + '80'}
-              showBorder={csvExportEnabled}
+              toggle={biometricEnabled}
+              onToggle={handleToggleBiometric}
             />
           )}
-
-          {/* CSV Export */}
           {csvExportEnabled && (
             <SettingsRow
-              label="Export Data (CSV)"
-              icon={Download}
-              iconColor={colors.success}
-              iconBgColor={colors.success + '15'}
-              onPress={handleCSVExport}
-              badge={isFreeUser && inAppPurchases.enabled ? 'Pro only' : undefined}
-              badgeColor={colors.warning}
-              showBorder={false}
+              icon={<Download size={18} color={primary} />}
+              label="Export My Data (CSV)"
+              onPress={handleCsvExport}
             />
           )}
+          <SettingsRow
+            icon={<Star size={18} color={primary} />}
+            label="Rate the App"
+            onPress={handleRateApp}
+          />
         </View>
 
-        {/* ── Help (if helpSystem enabled) ── */}
+        {/* Help Section */}
         {helpSystemEnabled && (
           <>
             <SectionHeader title="Help" />
-            <View
-              style={{
-                marginHorizontal: 16,
-                backgroundColor: colors.surface,
-                borderRadius: 20,
-                overflow: 'hidden',
-                marginBottom: 20,
-                borderWidth: 1,
-                borderColor: colors.border,
-              }}
-            >
-              {/* How To Use */}
+            <View style={{ marginHorizontal: 16, borderRadius: 12, backgroundColor: colors.surface, overflow: 'hidden' }}>
               <SettingsRow
-                label={`How To Use ${gasConfig.app.name}`}
-                icon={BookOpen}
-                onPress={() => {
-                  // TODO: DevAgent connects this to a HowToUseModal
-                  track('how_to_use_tapped');
-                }}
-                showBorder={dismissed}
+                icon={<BookOpen size={18} color={primary} />}
+                label="How To Use"
+                onPress={() => {}}
               />
-
-              {/* Show ? Help Icon (only if previously dismissed) */}
-              {dismissed && (
-                <SettingsRow
-                  label="Show ? Help Icon"
-                  icon={HelpCircle}
-                  iconColor={colors.textSecondary}
-                  iconBgColor={colors.surface}
-                  onPress={resetHelp}
-                  rightElement={
-                    <Text style={{ color: colors.textSecondary, fontSize: 12, marginRight: 4 }}>
-                      Hidden
-                    </Text>
-                  }
-                  showBorder={false}
-                />
-              )}
+              <SettingsRow
+                icon={<HelpCircle size={18} color={primary} />}
+                label={`Reset Tips (${dismissed.length} dismissed)`}
+                onPress={resetHelp}
+              />
             </View>
           </>
         )}
 
-        {/* ── Upgrade (only for free-tier users with IAP enabled) ── */}
-        {inAppPurchases.enabled && isFreeUser && proFeatures.length > 0 && (
-          <View style={{ marginHorizontal: 16, marginBottom: 20 }}>
+        {/* Upgrade Section */}
+        {inAppPurchases?.enabled && tier === 'free' && (
+          <>
             <SectionHeader title="Upgrade" />
-            <View
-              style={{
-                backgroundColor: colors.surface,
-                borderRadius: 20,
-                overflow: 'hidden',
-                borderWidth: 1,
-                borderColor: primary + '30',
-              }}
-            >
-              {/* Accent bar at top */}
-              <View style={{ height: 3, backgroundColor: primary }} />
-              <View style={{ padding: 20 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                  <Star size={18} color={primary} style={{ marginRight: 8 }} />
-                  <Text style={{ color: colors.text, fontWeight: '800', fontSize: 18 }}>
-                    {gasConfig.app.name} {proTier?.name ?? 'Pro'}
-                  </Text>
-                </View>
-                <Text style={{ color: colors.textSecondary, fontSize: 13, marginBottom: 16 }}>
-                  Unlock the full experience
-                </Text>
-
-                {/* Feature list */}
-                {proFeatures.map((f) => (
-                  <View key={f} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-                    <View
-                      style={{
-                        width: 20,
-                        height: 20,
-                        borderRadius: 10,
-                        backgroundColor: gasConfig.design.colors.success + '20',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginRight: 10,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: gasConfig.design.colors.success,
-                          fontSize: 11,
-                          fontWeight: '800',
-                        }}
-                      >
-                        {'✓'}
-                      </Text>
-                    </View>
-                    <Text style={{ color: colors.text, fontSize: 14 }}>{f}</Text>
-                  </View>
-                ))}
-
-                {/* Purchase button */}
-                <TouchableOpacity
-                  style={{
-                    backgroundColor: primary,
-                    borderRadius: 14,
-                    padding: 16,
-                    alignItems: 'center',
-                    marginTop: 8,
-                    opacity: purchasing ? 0.6 : 1,
-                  }}
-                  onPress={handleUpgrade}
-                  disabled={purchasing || subLoading}
-                  accessibilityLabel="Upgrade to Pro"
-                >
-                  <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 16 }}>
-                    {purchasing ? 'Processing...' : `Upgrade to ${proTier?.name ?? 'Pro'}`}
-                  </Text>
-                </TouchableOpacity>
-
-                {/* Restore purchases */}
-                <TouchableOpacity onPress={handleRestore} style={{ alignItems: 'center', paddingTop: 12 }}>
-                  <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Restore purchases</Text>
-                </TouchableOpacity>
-              </View>
+            <View style={{ marginHorizontal: 16, borderRadius: 12, backgroundColor: colors.surface, overflow: 'hidden' }}>
+              <SettingsRow
+                icon={<Star size={18} color={primary} />}
+                label="Upgrade to Pro"
+                sublabel="Unlock all features"
+                onPress={handlePurchase}
+                loading={purchasing || subLoading}
+              />
+              <SettingsRow
+                icon={<Star size={18} color={primary} />}
+                label="Restore Purchases"
+                onPress={handleRestore}
+              />
             </View>
-          </View>
+          </>
         )}
 
-        {/* ── Rate & Legal ── */}
-        <SectionHeader title="About" />
-        <View
-          style={{
-            marginHorizontal: 16,
-            backgroundColor: colors.surface,
-            borderRadius: 20,
-            overflow: 'hidden',
-            marginBottom: 20,
-            borderWidth: 1,
-            borderColor: colors.border,
-          }}
-        >
-          {/* Rate the app */}
-          <SettingsRow
-            label="Rate on App Store"
-            icon={Star}
-            iconColor={colors.warning}
-            iconBgColor={colors.warning + '15'}
-            onPress={handleRateApp}
-          />
+        {/* Legal Section */}
+        {compliance?.enabled && (
+          <>
+            <SectionHeader title="Legal" />
+            <View style={{ marginHorizontal: 16, borderRadius: 12, backgroundColor: colors.surface, overflow: 'hidden' }}>
+              {privacyUrl ? (
+                <SettingsRow
+                  icon={<FileText size={18} color={primary} />}
+                  label="Privacy Policy"
+                  onPress={() => Linking.openURL(privacyUrl)}
+                  rightIcon={<ExternalLink size={14} color={colors.textSecondary} />}
+                />
+              ) : null}
+              {termsUrl ? (
+                <SettingsRow
+                  icon={<FileText size={18} color={primary} />}
+                  label="Terms of Service"
+                  onPress={() => Linking.openURL(termsUrl)}
+                  rightIcon={<ExternalLink size={14} color={colors.textSecondary} />}
+                />
+              ) : null}
+            </View>
+          </>
+        )}
 
-          {/* Privacy Policy, only when a real URL is configured */}
-          {privacyUrl !== '' && (
-            <SettingsRow
-              label="Privacy Policy"
-              icon={FileText}
-              iconColor={colors.textSecondary}
-              iconBgColor={colors.textSecondary + '15'}
-              onPress={() => {
-                Linking.openURL(privacyUrl);
-                track('privacy_policy_tapped');
-              }}
-              showBorder={termsUrl !== '' || compliance.dataExport}
-            />
-          )}
-
-          {/* Terms of Service, only when a real URL is configured */}
-          {termsUrl !== '' && (
-            <SettingsRow
-              label="Terms of Service"
-              icon={ExternalLink}
-              iconColor={colors.textSecondary}
-              iconBgColor={colors.textSecondary + '15'}
-              onPress={() => {
-                Linking.openURL(termsUrl);
-                track('terms_tapped');
-              }}
-              showBorder={compliance.dataExport}
-            />
-          )}
-
-          {/* Data Export (GDPR/compliance) */}
-          {compliance.dataExport && (
-            <SettingsRow
-              label="Export My Data"
-              icon={Download}
-              iconColor="#6366F1"
-              iconBgColor="#6366F115"
-              onPress={handleExportData}
-              showBorder={false}
-            />
-          )}
-        </View>
-
-        {/* ── Account actions ── */}
+        {/* Account Section */}
         <SectionHeader title="Account" />
-
-        {/* Sign Out */}
-        <TouchableOpacity
-          style={{
-            marginHorizontal: 16,
-            backgroundColor: colors.surface,
-            borderRadius: 20,
-            padding: 18,
-            flexDirection: 'row',
-            alignItems: 'center',
-            borderWidth: 1,
-            borderColor: colors.border,
-            marginBottom: 12,
-          }}
-          onPress={handleSignOut}
-          accessibilityLabel="Sign out"
-        >
-          <View
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: '#EF444415',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: 12,
-            }}
-          >
-            <LogOut size={18} color="#EF4444" />
-          </View>
-          <Text style={{ color: '#EF4444', fontWeight: '600', fontSize: 15, flex: 1 }}>
-            Sign Out
-          </Text>
-        </TouchableOpacity>
-
-        {/* Delete Account */}
-        <TouchableOpacity
-          style={{
-            marginHorizontal: 16,
-            borderRadius: 20,
-            padding: 18,
-            flexDirection: 'row',
-            alignItems: 'center',
-            borderWidth: 1,
-            borderColor: colors.border,
-            marginBottom: 24,
-          }}
-          onPress={handleDeleteAccount}
-          accessibilityLabel="Delete account"
-        >
-          <View
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: '#EF444410',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: 12,
-            }}
-          >
-            <Trash2 size={18} color="#EF444480" />
-          </View>
-          <Text style={{ color: '#EF444480', fontWeight: '600', fontSize: 15, flex: 1 }}>
-            Delete Account
-          </Text>
-        </TouchableOpacity>
-
-        {/* ── App version footer ── */}
-        <View style={{ alignItems: 'center', paddingBottom: 16 }}>
-          <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-            {gasConfig.app.name} v{gasConfig.app.version}
-          </Text>
+        <View style={{ marginHorizontal: 16, borderRadius: 12, backgroundColor: colors.surface, overflow: 'hidden' }}>
+          <SettingsRow
+            icon={<LogOut size={18} color={colors.error} />}
+            label="Sign Out"
+            labelStyle={{ color: colors.error }}
+            onPress={handleSignOut}
+          />
+          <SettingsRow
+            icon={<Trash2 size={18} color={colors.error} />}
+            label="Delete Account"
+            labelStyle={{ color: colors.error }}
+            onPress={handleDeleteAccount}
+          />
         </View>
+
+        {/* Version Footer */}
+        <Text style={{ textAlign: 'center', color: colors.textSecondary, fontSize: 12, marginTop: 32 }}>
+          {gasConfig.app.name} v{gasConfig.app.version}
+        </Text>
       </ScrollView>
     </SafeAreaView>
   );

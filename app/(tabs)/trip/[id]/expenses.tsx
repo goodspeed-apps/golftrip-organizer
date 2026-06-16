@@ -36,6 +36,11 @@ interface Expense {
   split_member_ids: string[];
   expense_date: string;
   is_settled: boolean;
+  amount?: number;
+  paid_by_name?: string;
+  paid_by_id?: string;
+  created_at?: string;
+  split_count?: number;
 }
 
 interface Member {
@@ -46,7 +51,8 @@ interface Member {
 }
 
 export default function ExpensesScreen() {
-  const colors = useThemeColors();
+  const themeContext = useThemeColors();
+  const colors = themeContext.colors;
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
   const { track } = useAnalytics();
@@ -112,127 +118,74 @@ export default function ExpensesScreen() {
   const SummaryHeader = () => (
     <View>
       <Animated.View entering={FadeInDown.delay(0).duration(350)}>
-        <View style={{ margin: spacing.md, backgroundColor: colors.surface, borderRadius: radii.xl, padding: spacing.lg }}>
-          <Text style={{ fontFamily: 'Outfit_600SemiBold', fontSize: 13, color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8 }}>
-            Trip Total
+        <View style={{ margin: spacing.md, backgroundColor: colors.surface, borderRadius: radii.lg, padding: spacing.lg }}>
+          <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 4 }}>Total Expenses</Text>
+          <Text style={{ fontSize: 32, fontWeight: '800', color: colors.text }}>
+            ${(totalCents / 100).toFixed(2)}
           </Text>
-          <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 36, color: colors.text, marginTop: spacing.xs }}>
-            ${((totalCents ?? 0) / 100).toFixed(2)}
+          <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 4 }}>
+            Your share: ${(myShare / 100).toFixed(2)}
           </Text>
-          <Text style={{ fontFamily: 'Manrope_400Regular', fontSize: 14, color: colors.textSecondary, marginTop: spacing.xs }}>
-            {"Your share: "}
-            <Text style={{ fontFamily: 'Manrope_600SemiBold', color: colors.primary }}>
-              ${((myShare ?? 0) / 100).toFixed(2)}
-            </Text>
-          </Text>
-          <Pressable
-            onPress={handleSettle}
-            accessibilityLabel="Settle up"
-            accessibilityHint="View and settle outstanding balances"
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: spacing.xs,
-              marginTop: spacing.md,
-              backgroundColor: colors.primaryMuted,
-              borderRadius: 999,
-              paddingVertical: spacing.sm,
-              paddingHorizontal: spacing.md,
-              alignSelf: 'flex-start',
-            }}
-          >
-            <ArrowRightLeft size={14} color={colors.primary} />
-            <Text style={{ fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: colors.primary }}>
-              Settle Up
-            </Text>
-          </Pressable>
         </View>
       </Animated.View>
 
-      {loading && (
-        <View style={{ paddingHorizontal: spacing.md }}>
-          <LoadingSkeleton variant="list-item" />
-          <LoadingSkeleton variant="list-item" />
-          <LoadingSkeleton variant="list-item" />
-        </View>
-      )}
+      <SettlementSummary expenses={expenses} members={members} />
 
-      {error && !loading && (
-        <View style={{ margin: spacing.md, padding: spacing.md, backgroundColor: colors.surface, borderRadius: radii.xl }}>
-          <Text style={{ fontFamily: 'Manrope_400Regular', color: colors.error, textAlign: 'center' }}>{error}</Text>
-          <Pressable onPress={fetchData} style={{ marginTop: spacing.sm, alignItems: 'center' }}>
-            <Text style={{ fontFamily: 'Manrope_600SemiBold', color: colors.primary }}>Retry</Text>
-          </Pressable>
-        </View>
-      )}
+      <View style={{ flexDirection: 'row', gap: spacing.sm, marginHorizontal: spacing.md, marginBottom: spacing.md }}>
+        <Pressable
+          onPress={handleAddExpense}
+          style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: colors.primary, borderRadius: radii.md, paddingVertical: 12 }}
+        >
+          <Plus size={18} color="#fff" />
+          <Text style={{ color: '#fff', fontWeight: '600' }}>Add Expense</Text>
+        </Pressable>
+        <Pressable
+          onPress={handleSettle}
+          style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: colors.surface, borderRadius: radii.md, paddingVertical: 12, borderWidth: 1, borderColor: colors.border }}
+        >
+          <ArrowRightLeft size={18} color={colors.primary} />
+          <Text style={{ color: colors.primary, fontWeight: '600' }}>Settle Up</Text>
+        </Pressable>
+      </View>
 
-      {!loading && !error && expenses.length > 0 && (
-        <Text style={{ fontFamily: 'Outfit_600SemiBold', fontSize: 13, color: colors.textSecondary, paddingHorizontal: spacing.md, marginBottom: spacing.sm, letterSpacing: 0.8, textTransform: 'uppercase' }}>
-          All Expenses
-        </Text>
-      )}
+      {error ? (
+        <View style={{ margin: spacing.md, padding: 12, backgroundColor: colors.error + '22', borderRadius: radii.md }}>
+          <Text style={{ color: colors.error }}>{error}</Text>
+        </View>
+      ) : null}
     </View>
   );
 
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
-      <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.sm }}>
-        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 22, color: colors.text }}>Expenses</Text>
-      </View>
+  if (loading) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+        <LoadingSkeleton variant="list" />
+      </SafeAreaView>
+    );
+  }
 
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <FlatList
-        data={loading || error ? [] : expenses}
+        data={expenses}
         keyExtractor={(item) => item.id}
-        ListHeaderComponent={SummaryHeader}
+        ListHeaderComponent={<SummaryHeader />}
         renderItem={({ item, index }) => (
-          <Animated.View entering={FadeInDown.delay(50 * index).duration(350)}>
-            <ExpenseRow
-              expense={item}
-              members={members}
-              onPress={() => {
-                track('tap_expense_row', { expense_id: item.id });
-              }}
-            />
+          <Animated.View entering={FadeInDown.delay(index * 60).duration(300)}>
+            <ExpenseRow expense={item} members={members} />
           </Animated.View>
         )}
         ListEmptyComponent={
-          !loading && !error ? (
-            <EmptyState
-              icon={<DollarSign size={40} color={colors.primary} />}
-              title="No expenses yet"
-              description={"Add your first expense and we'll handle the math. No awkward money convos needed!"}
-              action={{ label: 'Add Expense', onPress: handleAddExpense }}
-            />
-          ) : null
+          <EmptyState
+            icon={<DollarSign size={40} color={colors.textSecondary} />}
+            title="No expenses yet"
+            description="Add expenses to split costs with your group"
+            action={{ label: 'Add Expense', onPress: handleAddExpense }}
+          />
         }
-        ListFooterComponent={<View style={{ height: 80 }} />}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 32 }}
       />
-
-      <Pressable
-        onPress={handleAddExpense}
-        accessibilityLabel="Add an expense"
-        accessibilityHint="Opens the add expense form"
-        style={{
-          position: 'absolute',
-          bottom: spacing.xl,
-          right: spacing.lg,
-          backgroundColor: colors.primary,
-          width: 56,
-          height: 56,
-          borderRadius: 28,
-          alignItems: 'center',
-          justifyContent: 'center',
-          shadowColor: colors.shadow,
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.3,
-          shadowRadius: 8,
-          elevation: 8,
-        }}
-      >
-        <Plus size={24} color={colors.textOnPrimary} />
-      </Pressable>
     </SafeAreaView>
   );
 }
