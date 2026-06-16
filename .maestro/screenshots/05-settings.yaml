@@ -1,0 +1,22 @@
+appId: ${MAESTRO_APP_ID}
+name: screenshot-settings
+---
+# Navigate to Settings screen and capture screenshot.
+# TODO: Replace navigation steps with app-specific commands once real routes exist.
+# NOTE: This flow assumes the user is already authenticated.
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 3000
+# TODO: Navigate to the Settings screen.
+# Example:
+#   - tapOn:
+#       id: "tab-settings"
+# OR from a profile screen:
+#   - tapOn:
+#       id: "tab-profile"
+#   - tapOn:
+#       text: "Settings"
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: screenshots/_raw/${MAESTRO_PLATFORM}/05-settings
