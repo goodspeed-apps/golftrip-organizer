@@ -130,147 +130,123 @@ export default function DashboardScreen() {
   }, [fetchTrips]);
 
   const handleCreateTrip = () => {
-    fabScale.value = withSpring(0.88, { damping: 10 }, () => {
-      fabScale.value = withSpring(1);
-    });
-    track('tap_create_trip_fab');
-    router.push('/(modal)/create-trip');
+    fabScale.value = withSpring(0.9, {}, () => { fabScale.value = withSpring(1); });
+    router.push('/(modal)/create-trip' as never);
   };
 
-  const handleLongPressPast = (trip: Trip) => {
-    track('long_press_past_trip', { trip_id: trip.id });
-    Alert.alert(trip.name, 'What would you like to do?', [
-      { text: 'View Recap', onPress: () => router.push(`/(tabs)/trip/${trip.id}/itinerary` as never) },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
+  const c = colors as unknown as Record<string, string>;
 
-  const displayName = user?.email?.split('@')[0] ?? 'Golfer';
-
-  const ListHeader = () => (
-    <View>
-      <Animated.View entering={FadeInDown.delay(0).duration(400)}>
-        <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.lg, paddingBottom: spacing.sm }}>
-          <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 26, color: colors.text }}>
-            {"Hey, " + displayName + " 👋"}
-          </Text>
-          <Text style={{ fontFamily: 'Manrope_400Regular', fontSize: 15, color: colors.textSecondary, marginTop: 2 }}>
-            {"Here's what's on your calendar."}
-          </Text>
-        </View>
-      </Animated.View>
-
-      {loading ? (
-        <View style={{ paddingHorizontal: spacing.md }}>
-          <LoadingSkeleton variant="card" />
-          <LoadingSkeleton variant="card" />
-        </View>
-      ) : error ? (
-        <View style={{ margin: spacing.md, padding: spacing.md, backgroundColor: colors.surface, borderRadius: radii.xl }}>
-          <Text style={{ fontFamily: 'Manrope_400Regular', color: colors.error, textAlign: 'center' }}>{error}</Text>
-          <Pressable onPress={fetchTrips} style={{ marginTop: spacing.sm, alignItems: 'center' }}>
-            <Text style={{ fontFamily: 'Manrope_600SemiBold', color: colors.primary }}>Retry</Text>
-          </Pressable>
-        </View>
-      ) : upcoming.length === 0 ? (
-        <Animated.View entering={FadeInDown.delay(100).duration(400)}>
-          <EmptyState
-            icon={<Flag size={40} color={colors.primary} />}
-            title="No trips yet!"
-            description={"Create your first trip and invite the crew. The fairways are waiting."}
-            action={{ label: 'Plan a Trip', onPress: handleCreateTrip }}
-          />
-        </Animated.View>
-      ) : (
-        <Animated.View entering={FadeInDown.delay(100).duration(400)}>
-          <Text style={{ fontFamily: 'Outfit_600SemiBold', fontSize: 13, color: colors.textSecondary, paddingHorizontal: spacing.md, marginBottom: spacing.sm, letterSpacing: 0.8, textTransform: 'uppercase' }}>
-            Upcoming Trips
-          </Text>
-          {upcoming.map((trip, i) => (
-            <Animated.View key={trip.id} entering={FadeInDown.delay(50 * i).duration(350)}>
-              <TripHeroCard
-                trip={trip}
-                onPress={() => {
-                  track('tap_trip_card', { trip_id: trip.id });
-                  router.push(`/(tabs)/trip/${trip.id}/itinerary` as never);
-                }}
-              />
-            </Animated.View>
-          ))}
-        </Animated.View>
-      )}
-
-      {!loading && !error && past.length > 0 && (
-        <Animated.View entering={FadeInDown.delay(200).duration(400)}>
-          <Text style={{ fontFamily: 'Outfit_600SemiBold', fontSize: 13, color: colors.textSecondary, paddingHorizontal: spacing.md, marginTop: spacing.lg, marginBottom: spacing.sm, letterSpacing: 0.8, textTransform: 'uppercase' }}>
-            Past Trips
-          </Text>
-        </Animated.View>
-      )}
-    </View>
+  const ListEmpty = () => (
+    <EmptyState
+      title="No trips yet"
+      description="Create your first golf trip and invite your crew!"
+      icon="flag"
+    />
   );
 
+  const renderUpcoming = ({ item }: { item: Trip }) => (
+    <Animated.View entering={FadeInDown.delay(100).duration(400)}>
+      <TripHeroCard
+        trip={{
+          id: item.id,
+          name: item.name,
+          destination: '',
+          start_date: item.start_date,
+          end_date: item.end_date,
+          member_count: item.memberCount ?? 0,
+          cover_emoji: undefined,
+        }}
+        onPress={() => router.push(`/(tabs)/trip/${item.id}/itinerary` as never)}
+      />
+    </Animated.View>
+  );
+
+  const renderPast = ({ item }: { item: Trip }) => (
+    <Animated.View entering={FadeInDown.delay(50).duration(300)}>
+      <PastTripRow
+        trip={{
+          id: item.id,
+          name: item.name,
+          destination: '',
+          start_date: item.start_date,
+          end_date: item.end_date,
+          member_count: item.memberCount ?? 0,
+          cover_emoji: undefined,
+        }}
+        onPress={() => router.push(`/(tabs)/trip/${item.id}/itinerary` as never)}
+      />
+    </Animated.View>
+  );
+
+  if (loading) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>
+        <LoadingSkeleton variant="list" />
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>
       <FlatList
-        data={loading || error ? [] : past}
+        data={upcoming}
         keyExtractor={(item) => item.id}
-        ListHeaderComponent={ListHeader}
-        renderItem={({ item, index }) => (
-          <Animated.View entering={FadeInDown.delay(50 * index).duration(350)}>
-            <PastTripRow
-              trip={item}
-              onPress={() => {
-                track('tap_past_trip', { trip_id: item.id });
-                router.push(`/(tabs)/trip/${item.id}/itinerary` as never);
-              }}
-              onLongPress={() => handleLongPressPast(item)}
-            />
-          </Animated.View>
-        )}
-        ListFooterComponent={<View style={{ height: 100 }} />}
+        renderItem={renderUpcoming}
+        ListEmptyComponent={ListEmpty}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />
         }
-        contentContainerStyle={{ flexGrow: 1 }}
-        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.lg, paddingBottom: spacing.sm }}>
+            <Text style={{ fontSize: 28, fontWeight: '800', color: c.text }}>My Trips</Text>
+          </View>
+        }
+        ListFooterComponent={
+          past.length > 0 ? (
+            <View>
+              <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.lg, paddingBottom: spacing.sm }}>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: c.text }}>Past Trips</Text>
+              </View>
+              {past.map((item) => renderPast({ item }))}
+            </View>
+          ) : null
+        }
+        contentContainerStyle={{ paddingBottom: 100 }}
       />
 
       <Animated.View
         style={[
-          fabStyle,
           {
             position: 'absolute',
-            bottom: spacing.xl,
+            bottom: 100,
             right: spacing.lg,
-          },
-        ]}
-      >
-        <Pressable
-          onPress={handleCreateTrip}
-          accessibilityLabel="Create a new trip"
-          accessibilityHint="Opens the trip creation form"
-          style={{
-            backgroundColor: colors.primary,
             width: 56,
             height: 56,
             borderRadius: 28,
-            alignItems: 'center',
+            backgroundColor: c.primary,
             justifyContent: 'center',
-            shadowColor: colors.shadow,
+            alignItems: 'center',
+            shadowColor: '#000',
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.3,
             shadowRadius: 8,
             elevation: 8,
-          }}
-        >
-          <Plus size={24} color={colors.textOnPrimary} />
+          },
+          fabStyle,
+        ]}
+      >
+        <Pressable onPress={handleCreateTrip} style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}>
+          <Plus size={28} color="#fff" />
         </Pressable>
       </Animated.View>
+
+      {error && (
+        <View style={{ position: 'absolute', bottom: 170, left: spacing.md, right: spacing.md }}>
+          <View style={{ backgroundColor: c.error, borderRadius: radii.md, padding: spacing.md }}>
+            <Text style={{ color: '#fff', textAlign: 'center' }}>{error}</Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }

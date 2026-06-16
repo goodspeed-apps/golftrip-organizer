@@ -19,7 +19,8 @@ import { ExpenseCategoryGrid } from '@/components/ExpenseCategoryGrid';
 type SplitType = 'all' | 'specific_people';
 
 export default function AddExpenseScreen() {
-  const colors = useThemeColors();
+  const themeContext = useThemeColors();
+  const colors = themeContext.colors ?? themeContext;
   const { user } = useAuth();
   const { track } = useAnalytics();
   const { toast, showToast } = useToast();
@@ -53,10 +54,19 @@ export default function AddExpenseScreen() {
       .eq('rsvp_status', 'accepted');
     end();
     if (error) { captureException(error, { screen: 'AddExpense', action: 'fetchMembers' }); return; }
-    const mapped = (data ?? []).map((m: { id: string; guest_name: string | null; users: { display_name: string } | null }) => ({
-      id: m.id,
-      display_name: m.guest_name ?? m.users?.display_name ?? 'Guest',
-    }));
+    const mapped = (data ?? []).map((m: { id: string; guest_name: string | null; users: { display_name: string } | { display_name: string }[] | null }) => {
+      const usersData = m.users;
+      let displayName = 'Guest';
+      if (Array.isArray(usersData) && usersData.length > 0) {
+        displayName = usersData[0].display_name ?? 'Guest';
+      } else if (usersData && !Array.isArray(usersData)) {
+        displayName = usersData.display_name ?? 'Guest';
+      }
+      return {
+        id: m.id,
+        display_name: m.guest_name ?? displayName,
+      };
+    });
     setMembers(mapped);
     if (mapped.length > 0 && !paidByMemberId) setPaidByMemberId(mapped[0].id);
   }, [tripId]);
@@ -77,84 +87,137 @@ export default function AddExpenseScreen() {
       currency: 'USD',
       paid_by_member_id: paidByMemberId,
       split_type: splitType,
-      split_member_ids: splitType === 'specific_people' ? selectedPeople : null,
-      expense_date: new Date().toISOString(),
-      is_settled: false,
-      created_by: user?.id,
+      split_member_ids: splitType === 'specific_people' ? selectedPeople : [],
+      expense_date: new Date().toISOString().split('T')[0],
     });
     end();
-    setSaving(false);
-    if (error) { captureException(error, { screen: 'AddExpense', action: 'save' }); showToast('Failed to save expense', 'error'); return; }
+    if (error) {
+      captureException(error, { screen: 'AddExpense', action: 'handleSave' });
+      showToast('Failed to save expense', 'error');
+      setSaving(false);
+      return;
+    }
     track('expense_saved', { category, amountCents, tripId });
+    showToast('Expense added!', 'success');
+    setSaving(false);
     router.back();
   };
 
-  const togglePerson = (id: string) =>
-    setSelectedPeople(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);
+  const c = colors as Record<string, string>;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-          <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text }}>Add Expense</Text>
-          <Pressable onPress={() => router.back()} accessibilityLabel="Close" accessibilityHint="Dismiss add expense modal" hitSlop={12}>
-            <X size={22} color={colors.textSecondary} />
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 }}>
+          <Text style={{ fontSize: 22, fontWeight: '700', color: c.text }}>Add Expense</Text>
+          <Pressable onPress={() => router.back()} hitSlop={8}>
+            <X size={24} color={c.textSecondary} />
           </Pressable>
         </View>
-        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 100 }} keyboardShouldPersistTaps="handled">
-          <Animated.View entering={FadeInDown.delay(0).springify()}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.8 }}>Category</Text>
-            <ExpenseCategoryGrid selected={category} onSelect={(cat, desc) => { setCategory(cat); if (!description) setDescription(desc); }} colors={colors} />
+
+        <ScrollView contentContainerStyle={{ padding: 20, gap: 20 }} keyboardShouldPersistTaps="handled">
+          <Animated.View entering={FadeInDown.delay(0).duration(350)}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: c.textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Category</Text>
+            <ExpenseCategoryGrid
+              selected={category}
+              onSelect={setCategory}
+              colors={c}
+            />
           </Animated.View>
-          <Animated.View entering={FadeInDown.delay(50).springify()} style={{ marginTop: 20 }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.8 }}>Description</Text>
-            <TextInput value={description} onChangeText={setDescription} placeholder="What was this for?" placeholderTextColor={colors.textMuted} style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 14, fontSize: 15, color: colors.text, borderWidth: 1, borderColor: colors.border }} accessibilityLabel="Description" />
+
+          <Animated.View entering={FadeInDown.delay(60).duration(350)}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: c.textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Description</Text>
+            <TextInput
+              value={description}
+              onChangeText={setDescription}
+              placeholder="What was this for?"
+              placeholderTextColor={c.textSecondary}
+              style={{ backgroundColor: c.surface, borderRadius: 12, padding: 14, fontSize: 16, color: c.text, borderWidth: 1, borderColor: c.border }}
+            />
           </Animated.View>
-          <Animated.View entering={FadeInDown.delay(100).springify()} style={{ marginTop: 16 }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.8 }}>Amount</Text>
-            <TextInput value={amountText} onChangeText={setAmountText} placeholder="$0.00" placeholderTextColor={colors.textMuted} keyboardType="decimal-pad" style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 14, fontSize: 22, fontWeight: '700', color: colors.text, borderWidth: 1, borderColor: colors.border }} accessibilityLabel="Amount" />
+
+          <Animated.View entering={FadeInDown.delay(120).duration(350)}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: c.textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Amount</Text>
+            <TextInput
+              value={amountText}
+              onChangeText={setAmountText}
+              placeholder="$0.00"
+              placeholderTextColor={c.textSecondary}
+              keyboardType="decimal-pad"
+              style={{ backgroundColor: c.surface, borderRadius: 12, padding: 14, fontSize: 24, fontWeight: '700', color: c.text, borderWidth: 1, borderColor: c.border }}
+            />
           </Animated.View>
-          <Animated.View entering={FadeInDown.delay(150).springify()} style={{ marginTop: 16 }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.8 }}>Paid By</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {members.map(m => (
-                <Pressable key={m.id} onPress={() => setPaidByMemberId(m.id)} accessibilityLabel={`Paid by ${m.display_name}`} style={{ marginRight: 10, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: paidByMemberId === m.id ? colors.primary : colors.surface, borderWidth: 1, borderColor: paidByMemberId === m.id ? colors.primary : colors.border }}>
-                  <Text style={{ color: paidByMemberId === m.id ? colors.textOnPrimary : colors.text, fontWeight: '600', fontSize: 14 }}>{m.display_name}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          </Animated.View>
-          <Animated.View entering={FadeInDown.delay(200).springify()} style={{ marginTop: 16 }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.8 }}>Split</Text>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              {(['all', 'specific_people'] as SplitType[]).map(t => (
-                <Pressable key={t} onPress={() => setSplitType(t)} accessibilityLabel={t === 'all' ? 'Split all players' : 'Split specific people'} style={{ flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: 'center', backgroundColor: splitType === t ? colors.primary : colors.surface, borderWidth: 1, borderColor: splitType === t ? colors.primary : colors.border }}>
-                  <Text style={{ color: splitType === t ? colors.textOnPrimary : colors.text, fontWeight: '600', fontSize: 14 }}>{t === 'all' ? 'All Players' : 'Select People'}</Text>
+
+          {members.length > 0 && (
+            <Animated.View entering={FadeInDown.delay(180).duration(350)}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: c.textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Paid By</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row' }}>
+                {members.map(m => (
+                  <Pressable
+                    key={m.id}
+                    onPress={() => setPaidByMemberId(m.id)}
+                    style={{
+                      paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, marginRight: 8,
+                      backgroundColor: paidByMemberId === m.id ? c.primary : c.surface,
+                      borderWidth: 1, borderColor: paidByMemberId === m.id ? c.primary : c.border,
+                    }}
+                  >
+                    <Text style={{ color: paidByMemberId === m.id ? '#fff' : c.text, fontWeight: '600' }}>{m.display_name}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </Animated.View>
+          )}
+
+          <Animated.View entering={FadeInDown.delay(240).duration(350)}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: c.textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Split</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {(['all', 'specific_people'] as SplitType[]).map(type => (
+                <Pressable
+                  key={type}
+                  onPress={() => setSplitType(type)}
+                  style={{
+                    flex: 1, padding: 12, borderRadius: 10, alignItems: 'center',
+                    backgroundColor: splitType === type ? c.primary : c.surface,
+                    borderWidth: 1, borderColor: splitType === type ? c.primary : c.border,
+                  }}
+                >
+                  <Text style={{ color: splitType === type ? '#fff' : c.text, fontWeight: '600', fontSize: 13 }}>
+                    {type === 'all' ? 'All Members' : 'Specific People'}
+                  </Text>
                 </Pressable>
               ))}
             </View>
-            {splitType === 'specific_people' && (
-              <Animated.View entering={FadeInDown.springify()} style={{ marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {members.map(m => {
-                  const sel = selectedPeople.includes(m.id);
-                  return (
-                    <Pressable key={m.id} onPress={() => togglePerson(m.id)} accessibilityLabel={`Toggle ${m.display_name}`} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: sel ? colors.accent : colors.surface, borderWidth: 1, borderColor: sel ? colors.accent : colors.border }}>
-                      <Text style={{ color: sel ? colors.textOnPrimary : colors.text, fontWeight: '600', fontSize: 14 }}>{m.display_name}</Text>
-                    </Pressable>
-                  );
-                })}
-              </Animated.View>
-            )}
           </Animated.View>
+
+          {splitType === 'specific_people' && members.length > 0 && (
+            <Animated.View entering={FadeInDown.delay(300).duration(350)}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: c.textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Select People</Text>
+              {members.map(m => (
+                <Pressable
+                  key={m.id}
+                  onPress={() => setSelectedPeople(prev => prev.includes(m.id) ? prev.filter(id => id !== m.id) : [...prev, m.id])}
+                  style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 10, marginBottom: 8, backgroundColor: selectedPeople.includes(m.id) ? c.primaryMuted : c.surface, borderWidth: 1, borderColor: selectedPeople.includes(m.id) ? c.primary : c.border }}
+                >
+                  <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: selectedPeople.includes(m.id) ? c.primary : c.border, backgroundColor: selectedPeople.includes(m.id) ? c.primary : 'transparent', marginRight: 10 }} />
+                  <Text style={{ color: c.text, fontWeight: '500' }}>{m.display_name}</Text>
+                </Pressable>
+              ))}
+            </Animated.View>
+          )}
         </ScrollView>
-        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20, backgroundColor: colors.background, borderTopWidth: 1, borderTopColor: colors.border }}>
-          <Animated.View style={saveStyle}>
-            <Pressable onPress={handleSave} disabled={saving} accessibilityLabel="Save expense" accessibilityHint="Saves this expense and splits it among selected players" style={{ backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center' }}>
-              {saving ? <ActivityIndicator color={colors.textOnPrimary} /> : <Text style={{ color: colors.textOnPrimary, fontSize: 16, fontWeight: '700' }}>Save Expense</Text>}
-            </Pressable>
-          </Animated.View>
-        </View>
-        <Toast {...toast} />
+
+        <Animated.View style={[{ padding: 20, paddingBottom: 32 }, saveStyle]}>
+          <Pressable
+            onPress={handleSave}
+            disabled={saving}
+            style={{ backgroundColor: saving ? c.primaryMuted : c.primary, borderRadius: 14, padding: 16, alignItems: 'center', opacity: saving ? 0.7 : 1 }}
+          >
+            {saving ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>Save Expense</Text>}
+          </Pressable>
+        </Animated.View>
+
+        {toast && <Toast message={toast.message} type={toast.type} />}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

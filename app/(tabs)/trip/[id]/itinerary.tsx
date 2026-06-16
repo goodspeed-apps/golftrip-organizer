@@ -43,13 +43,16 @@ interface TeeTime {
 interface Trip {
   id: string;
   name: string;
+  destination: string;
   start_date: string;
   end_date: string;
   cover_image_url: string | null;
   invite_code: string;
   status: string;
+  member_count: number;
   member_limit: number;
   organizer_id: string;
+  cover_emoji?: string;
 }
 
 export default function ItineraryScreen() {
@@ -78,7 +81,7 @@ export default function ItineraryScreen() {
       endApi();
       if (tripRes.error) throw tripRes.error;
       if (ttRes.error) throw ttRes.error;
-      setTrip(tripRes.data);
+      setTrip(tripRes.data as Trip);
       setTeeTimes(ttRes.data ?? []);
       trackScreenLoad('itinerary', start);
     } catch (err) {
@@ -102,7 +105,7 @@ export default function ItineraryScreen() {
     await Clipboard.setStringAsync(trip.invite_code);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     track('copy_invite_code', { trip_id: id });
-    showToast({ message: 'Invite code copied! Share it with your crew 🏌️', type: 'success' });
+    showToast('Invite code copied! Share it with your crew 🏌️');
   };
 
   const handleAddTeeTime = () => {
@@ -117,90 +120,89 @@ export default function ItineraryScreen() {
     }, {});
   };
 
-  const days = Object.entries(groupByDay(teeTimes)).sort(([a], [b]) => a.localeCompare(b));
-
-  const ListHeader = () => (
-    <View>
-      {trip && (
-        <TripHeaderBanner
-          trip={trip}
-          onCopyInvite={handleCopyInvite}
-          onAddTeeTime={handleAddTeeTime}
-        />
-      )}
-      {loading && (
-        <View style={{ padding: spacing.md }}>
-          <LoadingSkeleton variant="card" />
-          <LoadingSkeleton variant="card" />
-          <LoadingSkeleton variant="card" />
-        </View>
-      )}
-      {error && !loading && (
-        <View style={{ margin: spacing.md, padding: spacing.md, backgroundColor: colors.surface, borderRadius: radii.xl }}>
-          <Text style={{ fontFamily: 'Manrope_400Regular', color: colors.error, textAlign: 'center' }}>{error}</Text>
-          <Pressable onPress={fetchData} style={{ marginTop: spacing.sm, alignItems: 'center' }}>
-            <Text style={{ fontFamily: 'Manrope_600SemiBold', color: colors.primary }}>Retry</Text>
-          </Pressable>
-        </View>
-      )}
-    </View>
-  );
-
-  if (!loading && !error && teeTimes.length === 0) {
+  if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
-        <ListHeader />
-        <EmptyState
-          icon={<Calendar size={40} color={colors.primary} />}
-          title="No tee times yet"
-          description={"Add your first tee time to kick things off. The course is calling!"}
-          action={{ label: 'Add Tee Time', onPress: handleAddTeeTime }}
-        />
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+        <LoadingSkeleton variant="list" />
       </SafeAreaView>
     );
   }
 
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
-      <FlatList
-        data={days}
-        keyExtractor={([date]) => date}
-        ListHeaderComponent={ListHeader}
-        renderItem={({ item: [date, times], index }) => (
-          <Animated.View entering={FadeInDown.delay(50 * index).duration(350)}>
-            <TripDaySection date={date} teeTimes={times} tripId={id ?? ''} />
-          </Animated.View>
-        )}
-        ListFooterComponent={<View style={{ height: 80 }} />}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ flexGrow: 1 }}
-      />
+  if (error) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+        <EmptyState
+          title="Couldn't load itinerary"
+          subtitle={error}
+          icon={Calendar}
+        />
+      </SafeAreaView>
+    );
+  }
 
-      <Pressable
-        onPress={handleAddTeeTime}
-        accessibilityLabel="Add a tee time"
-        accessibilityHint="Opens the add tee time form"
-        style={{
-          position: 'absolute',
-          bottom: spacing.xl,
-          right: spacing.lg,
-          backgroundColor: colors.primary,
-          width: 56,
-          height: 56,
-          borderRadius: 28,
-          alignItems: 'center',
-          justifyContent: 'center',
-          shadowColor: colors.shadow,
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.3,
-          shadowRadius: 8,
-          elevation: 8,
-        }}
-      >
-        <Plus size={24} color={colors.textOnPrimary} />
-      </Pressable>
+  const groupedDays = groupByDay(teeTimes);
+  const sortedDates = Object.keys(groupedDays).sort();
+
+  const isOrganizer = trip?.organizer_id === user?.id;
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <FlatList
+        data={sortedDates}
+        keyExtractor={(date) => date}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+        }
+        ListHeaderComponent={
+          trip ? (
+            <TripHeaderBanner
+              trip={{
+                name: trip.name,
+                destination: trip.destination,
+                start_date: trip.start_date,
+                end_date: trip.end_date,
+                member_count: trip.member_count,
+                cover_emoji: trip.cover_emoji,
+              }}
+              onCopyInvite={handleCopyInvite}
+              colors={colors}
+            />
+          ) : null
+        }
+        ListEmptyComponent={
+          <EmptyState
+            title="No tee times yet"
+            subtitle="Add your first tee time to get the crew organized"
+            icon={Calendar}
+            action={isOrganizer ? { label: 'Add Tee Time', onPress: handleAddTeeTime } : undefined}
+          />
+        }
+        renderItem={({ item: date }) => (
+          <TripDaySection
+            date={date}
+            teeTimes={groupedDays[date]}
+            tripId={id ?? ''}
+          />
+        )}
+      />
+      {isOrganizer && (
+        <Pressable
+          onPress={handleAddTeeTime}
+          style={{
+            position: 'absolute',
+            bottom: 24,
+            right: 24,
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: colors.primary,
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <Plus size={24} color="#fff" />
+        </Pressable>
+      )}
     </SafeAreaView>
   );
 }
