@@ -1,0 +1,30 @@
+node_modules/
+.expo/
+dist/
+ios/
+android/
+# Widget scaffold source — tracked despite global ios/ and android/ exclusions
+!extensions/widgets/ios/
+!extensions/widgets/android/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
+.env
+.env.local
+.env.*.local
+npm-debug.*
+*.tsbuildinfo
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+coverage/
+.perf-build/
+storybook-static/
+
+# Local agent config — contains absolute paths
+.mcp.json

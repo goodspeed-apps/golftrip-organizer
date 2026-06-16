@@ -1,0 +1,17 @@
+appId: ${MAESTRO_APP_ID}
+name: screenshot-signup
+---
+# Navigate to Sign Up screen and capture screenshot.
+# TODO: Replace navigation steps with app-specific commands once real routes exist.
+- launchApp:
+    clearState: true
+- waitForAnimationToEnd:
+    timeout: 3000
+# TODO: Tap "Create account" or the equivalent CTA from the welcome/login screen.
+# Example:
+#   - tapOn:
+#       text: "Create account"
+# TODO: Wait for the signup form to fully render before capturing.
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: screenshots/_raw/${MAESTRO_PLATFORM}/02-signup

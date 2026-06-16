@@ -1,0 +1,48 @@
+name: i18n Coverage
+on:
+  pull_request:
+    paths:
+      - '**/*.ts'
+      - '**/*.tsx'
+      - 'locales/**'
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Check i18n coverage
+        id: check
+        run: node scripts/check-i18n-coverage.mjs --json > coverage-report.json
+      - name: Post PR comment
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            try {
+              const report = JSON.parse(fs.readFileSync('coverage-report.json', 'utf8'));
+              const lines = report.locales
+                .filter(l => l.missing.length > 0)
+                .map(l => `**${l.locale}**: ${l.missing.length} missing key(s)\n` +
+                  l.missing.slice(0, 20).map(k => `  - \`${k}\``).join('\n') +
+                  (l.missing.length > 20 ? `\n  ...and ${l.missing.length - 20} more` : ''));
+              if (lines.length === 0) return;
+              const body = `## i18n Coverage Report\n\n${lines.join('\n\n')}`;
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body,
+              });
+            } catch (e) {
+              console.error('Failed to post i18n coverage comment:', e.message);
+            }

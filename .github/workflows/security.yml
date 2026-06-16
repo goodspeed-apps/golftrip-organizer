@@ -1,0 +1,82 @@
+name: Security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  npm-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Security audit (high+critical, allowlisting dev-only transitive advisories)
+        run: |
+          # Fails on any high/critical advisory EXCEPT a small allowlist of dev-only
+          # transitive deps with no shipped-app impact (tracked for an upstream patch):
+          #   GHSA-w7jw-789q-3m8p  shell-quote  via react-devtools-core (dev tooling only)
+          #   GHSA-gv7w-rqvm-qjhr  esbuild      Deno-specific, N/A to a React Native bundle
+          # pnpm overrides + auditConfig.ignoreGhsas do not take for these in this repo's
+          # setup (esbuild ships platform binaries), so the allowlist is enforced here.
+          ALLOW='GHSA-w7jw-789q-3m8p GHSA-gv7w-rqvm-qjhr'
+          report="$(pnpm audit --json || true)"
+          if [ -z "$report" ]; then echo "audit produced no output"; exit 1; fi
+          unexpected="$(printf '%s' "$report" | jq -r --arg allow "$ALLOW" '
+            ($allow | split(" ")) as $a
+            | (.advisories // {}) | to_entries[] | .value
+            | select(.severity == "high" or .severity == "critical")
+            | select(((.github_advisory_id // .url) | IN($a[]) | not))
+            | "\(.severity)\t\(.module_name)\t\(.github_advisory_id // .url)"')"
+          if [ -n "$unexpected" ]; then
+            echo "Unexpected high/critical advisories (not in allowlist):"; echo "$unexpected"; exit 1
+          fi
+          echo "OK: no high/critical advisories outside the documented allowlist."
+
+  semgrep:
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    container: returntocorp/semgrep:latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: semgrep ci --config p/typescript --config p/react --config p/owasp-top-ten
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    # gitleaks/gitleaks-action@v2 needs contents:read to scan history and
+    # pull-requests:write to post the scan summary back. Without these the
+    # action returns 403 'Resource not accessible by integration'.
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+  license-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm exec license-checker --production --failOn 'GPL;AGPL;LGPL;CC-BY-SA' --excludePackages 'node-forge@1.4.0'
