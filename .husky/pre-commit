@@ -1,0 +1,6 @@
+# Husky 9 format — no husky.sh source needed.
+# Regenerate types/database.ts if a migration changed in this commit.
+if git diff --cached --name-only | grep -q '^supabase/migrations/'; then
+  ./scripts/gen-types.sh
+  git add types/database.ts
+fi
