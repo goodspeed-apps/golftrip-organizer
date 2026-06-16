@@ -91,11 +91,11 @@ export default function CreateTripModal() {
 
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       track('trip_created', { trip_id: data.id });
-      showToast({ message: "Trip created! Time to get the crew together 🏌️", type: 'success' });
+      showToast("Trip created! Time to get the crew together 🏌️", 'success');
       router.replace(`/(tabs)/trip/${data.id}/itinerary` as never);
     } catch (err) {
       captureException(err as Error, { screen: 'create-trip', action: 'handleCreate' });
-      showToast({ message: "Couldn't create trip. Try again!", type: 'error' });
+      showToast("Couldn't create trip. Try again!", 'error');
     } finally {
       setSaving(false);
     }
@@ -118,95 +118,134 @@ export default function CreateTripModal() {
     fontSize: 13,
     color: colors.textSecondary,
     marginBottom: spacing.xs,
-    marginTop: spacing.md,
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-          <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 20, color: colors.text }}>Plan a New Trip</Text>
-          <Pressable onPress={() => router.back()} accessibilityLabel="Close" style={{ padding: spacing.xs }}>
-            <X size={22} color={colors.textSecondary} />
-          </Pressable>
-        </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView
+          contentContainerStyle={{ padding: spacing.lg }}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Header */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xl }}>
+            <Pressable onPress={() => router.back()} style={{ marginRight: spacing.md }}>
+              <X size={24} color={colors.text} />
+            </Pressable>
+            <Text
+              style={{
+                fontFamily: 'Manrope_700Bold',
+                fontSize: 22,
+                color: colors.text,
+                flex: 1,
+              }}
+            >
+              Create Trip
+            </Text>
+          </View>
 
-        <ScrollView contentContainerStyle={{ padding: spacing.md }} showsVerticalScrollIndicator={false}>
-          <Animated.View entering={FadeInDown.delay(50).duration(350)}>
+          {/* Trip Name */}
+          <Animated.View entering={FadeInDown.delay(50)}>
             <Text style={labelStyle}>Trip Name</Text>
             <TextInput
-              style={[inputStyle, fieldErrors.tripName ? { borderColor: colors.error } : {}]}
-              placeholder={"e.g. Pebble Beach Boys Trip 2025"}
-              placeholderTextColor={colors.textMuted}
+              style={inputStyle}
               value={tripName}
-              onChangeText={(v) => { setTripName(v); setFieldErrors((e) => ({ ...e, tripName: '' })); }}
-              accessibilityLabel="Trip name"
+              onChangeText={setTripName}
+              placeholder="e.g. Pebble Beach 2025"
+              placeholderTextColor={colors.textSecondary}
             />
-            {!!fieldErrors.tripName && <Text style={{ color: colors.error, fontFamily: 'Manrope_400Regular', fontSize: 12 }}>{fieldErrors.tripName}</Text>}
+            {fieldErrors.tripName ? (
+              <Text style={{ color: colors.error, fontSize: 12, marginBottom: spacing.xs }}>
+                {fieldErrors.tripName}
+              </Text>
+            ) : null}
+          </Animated.View>
 
+          {/* Start Date */}
+          <Animated.View entering={FadeInDown.delay(100)}>
             <Text style={labelStyle}>Start Date</Text>
             <TextInput
-              style={[inputStyle, fieldErrors.startDate ? { borderColor: colors.error } : {}]}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={colors.textMuted}
+              style={inputStyle}
               value={startDate}
-              onChangeText={(v) => { setStartDate(v); setFieldErrors((e) => ({ ...e, startDate: '' })); }}
-              keyboardType="numeric"
-              accessibilityLabel="Trip start date"
+              onChangeText={setStartDate}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor={colors.textSecondary}
+              keyboardType="numbers-and-punctuation"
             />
-            {!!fieldErrors.startDate && <Text style={{ color: colors.error, fontFamily: 'Manrope_400Regular', fontSize: 12 }}>{fieldErrors.startDate}</Text>}
+            {fieldErrors.startDate ? (
+              <Text style={{ color: colors.error, fontSize: 12, marginBottom: spacing.xs }}>
+                {fieldErrors.startDate}
+              </Text>
+            ) : null}
+          </Animated.View>
 
+          {/* End Date */}
+          <Animated.View entering={FadeInDown.delay(150)}>
             <Text style={labelStyle}>End Date</Text>
             <TextInput
-              style={[inputStyle, fieldErrors.endDate ? { borderColor: colors.error } : {}]}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={colors.textMuted}
+              style={inputStyle}
               value={endDate}
-              onChangeText={(v) => { setEndDate(v); setFieldErrors((e) => ({ ...e, endDate: '' })); }}
-              keyboardType="numeric"
-              accessibilityLabel="Trip end date"
+              onChangeText={setEndDate}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor={colors.textSecondary}
+              keyboardType="numbers-and-punctuation"
             />
-            {!!fieldErrors.endDate && <Text style={{ color: colors.error, fontFamily: 'Manrope_400Regular', fontSize: 12 }}>{fieldErrors.endDate}</Text>}
+            {fieldErrors.endDate ? (
+              <Text style={{ color: colors.error, fontSize: 12, marginBottom: spacing.xs }}>
+                {fieldErrors.endDate}
+              </Text>
+            ) : null}
+          </Animated.View>
 
+          {/* Member Limit */}
+          <Animated.View entering={FadeInDown.delay(200)}>
             <Text style={labelStyle}>Max Players</Text>
             <TextInput
-              style={[inputStyle, fieldErrors.memberLimit ? { borderColor: colors.error } : {}]}
-              placeholder="8"
-              placeholderTextColor={colors.textMuted}
+              style={inputStyle}
               value={memberLimit}
-              onChangeText={(v) => { setMemberLimit(v); setFieldErrors((e) => ({ ...e, memberLimit: '' })); }}
-              keyboardType="numeric"
-              accessibilityLabel="Maximum number of players"
+              onChangeText={setMemberLimit}
+              placeholder="8"
+              placeholderTextColor={colors.textSecondary}
+              keyboardType="number-pad"
             />
-            {!!fieldErrors.memberLimit && <Text style={{ color: colors.error, fontFamily: 'Manrope_400Regular', fontSize: 12 }}>{fieldErrors.memberLimit}</Text>}
+            {fieldErrors.memberLimit ? (
+              <Text style={{ color: colors.error, fontSize: 12, marginBottom: spacing.xs }}>
+                {fieldErrors.memberLimit}
+              </Text>
+            ) : null}
+          </Animated.View>
 
-            <View style={{ height: spacing.xl }} />
+          {/* Submit */}
+          <Animated.View entering={FadeInDown.delay(250)} style={{ marginTop: spacing.lg }}>
+            <Pressable
+              onPress={handleCreate}
+              disabled={saving}
+              style={{
+                backgroundColor: saving ? colors.border : colors.primary,
+                borderRadius: radii.xl,
+                padding: spacing.md,
+                alignItems: 'center',
+              }}
+            >
+              {saving ? (
+                <ActivityIndicator color={colors.background} />
+              ) : (
+                <Text
+                  style={{
+                    fontFamily: 'Manrope_700Bold',
+                    fontSize: 16,
+                    color: colors.background,
+                  }}
+                >
+                  Create Trip
+                </Text>
+              )}
+            </Pressable>
           </Animated.View>
         </ScrollView>
-
-        <View style={{ padding: spacing.md, borderTopWidth: 1, borderTopColor: colors.border }}>
-          <Pressable
-            onPress={handleCreate}
-            disabled={saving}
-            accessibilityLabel="Create trip"
-            accessibilityHint="Saves your trip and opens the workspace"
-            style={{
-              backgroundColor: colors.primary,
-              borderRadius: 999,
-              paddingVertical: spacing.md,
-              alignItems: 'center',
-              opacity: saving ? 0.7 : 1,
-            }}
-          >
-            {saving ? (
-              <ActivityIndicator color={colors.textOnPrimary} />
-            ) : (
-              <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 16, color: colors.textOnPrimary }}>
-                Create Trip 🏌️
-              </Text>
-            )}
-          </Pressable>
-        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

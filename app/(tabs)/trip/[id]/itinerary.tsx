@@ -102,7 +102,7 @@ export default function ItineraryScreen() {
     await Clipboard.setStringAsync(trip.invite_code);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     track('copy_invite_code', { trip_id: id });
-    showToast({ message: 'Invite code copied! Share it with your crew 🏌️', type: 'success' });
+    showToast('Invite code copied! Share it with your crew 🏌️');
   };
 
   const handleAddTeeTime = () => {
@@ -117,89 +117,74 @@ export default function ItineraryScreen() {
     }, {});
   };
 
-  const days = Object.entries(groupByDay(teeTimes)).sort(([a], [b]) => a.localeCompare(b));
+  const grouped = groupByDay(teeTimes);
+  const sortedDays = Object.keys(grouped).sort();
+  const c = colors;
 
-  const ListHeader = () => (
-    <View>
-      {trip && (
-        <TripHeaderBanner
-          trip={trip}
-          onCopyInvite={handleCopyInvite}
-          onAddTeeTime={handleAddTeeTime}
-        />
-      )}
-      {loading && (
-        <View style={{ padding: spacing.md }}>
-          <LoadingSkeleton variant="card" />
-          <LoadingSkeleton variant="card" />
-          <LoadingSkeleton variant="card" />
-        </View>
-      )}
-      {error && !loading && (
-        <View style={{ margin: spacing.md, padding: spacing.md, backgroundColor: colors.surface, borderRadius: radii.xl }}>
-          <Text style={{ fontFamily: 'Manrope_400Regular', color: colors.error, textAlign: 'center' }}>{error}</Text>
-          <Pressable onPress={fetchData} style={{ marginTop: spacing.sm, alignItems: 'center' }}>
-            <Text style={{ fontFamily: 'Manrope_600SemiBold', color: colors.primary }}>Retry</Text>
-          </Pressable>
-        </View>
-      )}
-    </View>
+  if (loading) return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>
+      <LoadingSkeleton variant="list" />
+    </SafeAreaView>
   );
 
-  if (!loading && !error && teeTimes.length === 0) {
-    return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
-        <ListHeader />
-        <EmptyState
-          icon={<Calendar size={40} color={colors.primary} />}
-          title="No tee times yet"
-          description={"Add your first tee time to kick things off. The course is calling!"}
-          action={{ label: 'Add Tee Time', onPress: handleAddTeeTime }}
-        />
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
-      </SafeAreaView>
-    );
-  }
+  if (error) return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>
+      <EmptyState title="Error" subtitle={error} icon={<Calendar size={40} color={c.textSecondary} />} />
+    </SafeAreaView>
+  );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>
       <FlatList
-        data={days}
-        keyExtractor={([date]) => date}
-        ListHeaderComponent={ListHeader}
-        renderItem={({ item: [date, times], index }) => (
-          <Animated.View entering={FadeInDown.delay(50 * index).duration(350)}>
-            <TripDaySection date={date} teeTimes={times} tripId={id ?? ''} />
-          </Animated.View>
+        data={sortedDays}
+        keyExtractor={d => d}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />}
+        ListHeaderComponent={
+          trip ? (
+            <TripHeaderBanner
+              trip={{
+                name: trip.name,
+                destination: trip.cover_image_url ?? '',
+                start_date: trip.start_date,
+                end_date: trip.end_date,
+                member_count: 0,
+                cover_emoji: undefined,
+              }}
+              onCopyInvite={handleCopyInvite}
+            />
+          ) : null
+        }
+        renderItem={({ item: date }) => (
+          <TripDaySection
+            date={date}
+            teeTimes={grouped[date]}
+            tripId={id ?? ''}
+            onAddTeeTime={handleAddTeeTime}
+          />
         )}
-        ListFooterComponent={<View style={{ height: 80 }} />}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ flexGrow: 1 }}
+        ListEmptyComponent={
+          <EmptyState
+            title="No tee times yet"
+            subtitle="Add your first tee time to get started"
+            icon={<Calendar size={40} color={c.textSecondary} />}
+          />
+        }
+        contentContainerStyle={{ paddingBottom: 100 }}
       />
 
+      {/* FAB */}
       <Pressable
         onPress={handleAddTeeTime}
-        accessibilityLabel="Add a tee time"
-        accessibilityHint="Opens the add tee time form"
         style={{
-          position: 'absolute',
-          bottom: spacing.xl,
-          right: spacing.lg,
-          backgroundColor: colors.primary,
-          width: 56,
-          height: 56,
-          borderRadius: 28,
-          alignItems: 'center',
-          justifyContent: 'center',
-          shadowColor: colors.shadow,
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.3,
-          shadowRadius: 8,
-          elevation: 8,
+          position: 'absolute', bottom: 24, right: 24,
+          width: 56, height: 56, borderRadius: 28,
+          backgroundColor: c.primary,
+          justifyContent: 'center', alignItems: 'center',
+          shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3, shadowRadius: 8, elevation: 8,
         }}
       >
-        <Plus size={24} color={colors.textOnPrimary} />
+        <Plus size={24} color="#fff" />
       </Pressable>
     </SafeAreaView>
   );

@@ -36,6 +36,11 @@ interface Expense {
   split_member_ids: string[];
   expense_date: string;
   is_settled: boolean;
+  amount?: number;
+  paid_by_name?: string;
+  paid_by_id?: string;
+  created_at?: string;
+  split_count?: number;
 }
 
 interface Member {
@@ -112,126 +117,73 @@ export default function ExpensesScreen() {
   const SummaryHeader = () => (
     <View>
       <Animated.View entering={FadeInDown.delay(0).duration(350)}>
-        <View style={{ margin: spacing.md, backgroundColor: colors.surface, borderRadius: radii.xl, padding: spacing.lg }}>
-          <Text style={{ fontFamily: 'Outfit_600SemiBold', fontSize: 13, color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8 }}>
-            Trip Total
-          </Text>
-          <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 36, color: colors.text, marginTop: spacing.xs }}>
-            ${((totalCents ?? 0) / 100).toFixed(2)}
-          </Text>
-          <Text style={{ fontFamily: 'Manrope_400Regular', fontSize: 14, color: colors.textSecondary, marginTop: spacing.xs }}>
-            {"Your share: "}
-            <Text style={{ fontFamily: 'Manrope_600SemiBold', color: colors.primary }}>
-              ${((myShare ?? 0) / 100).toFixed(2)}
-            </Text>
-          </Text>
-          <Pressable
-            onPress={handleSettle}
-            accessibilityLabel="Settle up"
-            accessibilityHint="View and settle outstanding balances"
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: spacing.xs,
-              marginTop: spacing.md,
-              backgroundColor: colors.primaryMuted,
-              borderRadius: 999,
-              paddingVertical: spacing.sm,
-              paddingHorizontal: spacing.md,
-              alignSelf: 'flex-start',
-            }}
-          >
-            <ArrowRightLeft size={14} color={colors.primary} />
-            <Text style={{ fontFamily: 'Manrope_600SemiBold', fontSize: 13, color: colors.primary }}>
-              Settle Up
-            </Text>
-          </Pressable>
+        <View style={{ margin: spacing.md, backgroundColor: colors.card, borderRadius: radii.lg, padding: spacing.md }}>
+          <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 4 }}>Total Expenses</Text>
+          <Text style={{ fontSize: 28, fontWeight: '800', color: colors.text }}>${(totalCents / 100).toFixed(2)}</Text>
+          <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 4 }}>Your share: ${(myShare / 100).toFixed(2)}</Text>
         </View>
       </Animated.View>
-
-      {loading && (
-        <View style={{ paddingHorizontal: spacing.md }}>
-          <LoadingSkeleton variant="list-item" />
-          <LoadingSkeleton variant="list-item" />
-          <LoadingSkeleton variant="list-item" />
-        </View>
-      )}
-
-      {error && !loading && (
-        <View style={{ margin: spacing.md, padding: spacing.md, backgroundColor: colors.surface, borderRadius: radii.xl }}>
-          <Text style={{ fontFamily: 'Manrope_400Regular', color: colors.error, textAlign: 'center' }}>{error}</Text>
-          <Pressable onPress={fetchData} style={{ marginTop: spacing.sm, alignItems: 'center' }}>
-            <Text style={{ fontFamily: 'Manrope_600SemiBold', color: colors.primary }}>Retry</Text>
-          </Pressable>
-        </View>
-      )}
-
-      {!loading && !error && expenses.length > 0 && (
-        <Text style={{ fontFamily: 'Outfit_600SemiBold', fontSize: 13, color: colors.textSecondary, paddingHorizontal: spacing.md, marginBottom: spacing.sm, letterSpacing: 0.8, textTransform: 'uppercase' }}>
-          All Expenses
-        </Text>
-      )}
+      <SettlementSummary expenses={expenses} members={members} onSettle={handleSettle} />
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.sm }}>
+        <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>All Expenses</Text>
+        <Pressable
+          onPress={handleAddExpense}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 }}
+        >
+          <Plus size={16} color="#fff" />
+          <Text style={{ color: '#fff', fontWeight: '600', fontSize: 13 }}>Add</Text>
+        </Pressable>
+      </View>
     </View>
   );
 
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
-      <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.sm }}>
-        <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 22, color: colors.text }}>Expenses</Text>
-      </View>
+  const c = colors;
 
+  if (loading) return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>
+      <LoadingSkeleton variant="list" />
+    </SafeAreaView>
+  );
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>
       <FlatList
-        data={loading || error ? [] : expenses}
-        keyExtractor={(item) => item.id}
-        ListHeaderComponent={SummaryHeader}
-        renderItem={({ item, index }) => (
-          <Animated.View entering={FadeInDown.delay(50 * index).duration(350)}>
+        data={expenses}
+        keyExtractor={e => e.id}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />}
+        ListHeaderComponent={<SummaryHeader />}
+        renderItem={({ item }) => (
+          <Animated.View entering={FadeInDown.duration(300)}>
             <ExpenseRow
               expense={item}
               members={members}
-              onPress={() => {
-                track('tap_expense_row', { expense_id: item.id });
-              }}
+              onPress={() => router.push(`/(modal)/edit-expense?expenseId=${item.id}` as never)}
             />
           </Animated.View>
         )}
         ListEmptyComponent={
-          !loading && !error ? (
-            <EmptyState
-              icon={<DollarSign size={40} color={colors.primary} />}
-              title="No expenses yet"
-              description={"Add your first expense and we'll handle the math. No awkward money convos needed!"}
-              action={{ label: 'Add Expense', onPress: handleAddExpense }}
-            />
-          ) : null
+          <EmptyState
+            title="No expenses yet"
+            subtitle="Add your first expense to start tracking costs"
+            icon={<DollarSign size={40} color={c.textSecondary} />}
+          />
         }
-        ListFooterComponent={<View style={{ height: 80 }} />}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 }}
       />
 
+      {/* FAB */}
       <Pressable
         onPress={handleAddExpense}
-        accessibilityLabel="Add an expense"
-        accessibilityHint="Opens the add expense form"
         style={{
-          position: 'absolute',
-          bottom: spacing.xl,
-          right: spacing.lg,
-          backgroundColor: colors.primary,
-          width: 56,
-          height: 56,
-          borderRadius: 28,
-          alignItems: 'center',
-          justifyContent: 'center',
-          shadowColor: colors.shadow,
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.3,
-          shadowRadius: 8,
-          elevation: 8,
+          position: 'absolute', bottom: 24, right: 24,
+          width: 56, height: 56, borderRadius: 28,
+          backgroundColor: c.primary,
+          justifyContent: 'center', alignItems: 'center',
+          shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3, shadowRadius: 8, elevation: 8,
         }}
       >
-        <Plus size={24} color={colors.textOnPrimary} />
+        <Plus size={24} color="#fff" />
       </Pressable>
     </SafeAreaView>
   );

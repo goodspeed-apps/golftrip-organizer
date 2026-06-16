@@ -11,6 +11,16 @@ import { takeScreenshot, loadApp } from 'react-native-owl';
  *       single screen that advances via internal state.
  *       Update the step navigation calls below after first run.
  */
+
+// Detox globals used in owl tests
+declare const device: {
+  openURL(options: { url: string }): Promise<void>;
+};
+declare function element(matcher: unknown): { tap(): Promise<void> };
+declare const by: {
+  id(id: string): unknown;
+};
+
 describe('Onboarding flow', () => {
   beforeAll(async () => {
     await loadApp();
