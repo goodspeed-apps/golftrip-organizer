@@ -118,19 +118,16 @@ export default function AdminSupportScreen() {
   const renderThread = ({ item }: { item: Thread }) => (
     <TouchableOpacity
       onPress={() => openThread(item)}
-      style={[styles.threadRow, { borderBottomColor: colors.border }]}
+      style={[
+        styles.threadItem,
+        { backgroundColor: colors.card, borderColor: colors.border },
+        item.status === 'resolved' && { opacity: 0.6 },
+      ]}
     >
       <View style={{ flex: 1 }}>
-        <Text style={[styles.threadSubject, { color: colors.text }]} numberOfLines={1}>
-          {item.subject ?? '(no subject)'}
-        </Text>
+        <Text style={[styles.threadSubject, { color: colors.text }]}>{item.subject ?? '(no subject)'}</Text>
         <Text style={[styles.threadMeta, { color: colors.textSecondary }]}>
           {getDisplayName(item)} · {item.status ?? 'open'}
-        </Text>
-      </View>
-      <View style={[styles.statusBadge, { backgroundColor: item.status === 'resolved' ? colors.success + '22' : colors.warning + '22' }]}>
-        <Text style={{ color: item.status === 'resolved' ? colors.success : colors.warning, fontSize: 11 }}>
-          {item.status ?? 'open'}
         </Text>
       </View>
     </TouchableOpacity>
@@ -140,13 +137,13 @@ export default function AdminSupportScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Text style={[styles.header, { color: colors.text }]}>Support Threads</Text>
       {loading ? (
-        <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} />
+        <ActivityIndicator style={{ marginTop: 32 }} color={colors.primary} />
       ) : (
         <VirtualList
           data={threads}
           renderItem={renderThread}
           keyExtractor={(item) => item.id}
-          ListEmptyComponent={<Text style={[styles.empty, { color: colors.textSecondary }]}>No threads yet.</Text>}
+          contentContainerStyle={{ padding: 16 }}
         />
       )}
 
@@ -162,49 +159,58 @@ export default function AdminSupportScreen() {
           </View>
 
           {msgLoading ? (
-            <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} />
+            <ActivityIndicator style={{ flex: 1 }} color={colors.primary} />
           ) : (
             <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
-              {messages.map(msg => (
+              {messages.map((msg) => (
                 <View
                   key={msg.id}
                   style={[
-                    styles.bubble,
+                    styles.messageBubble,
                     msg.author_role === 'admin'
-                      ? { alignSelf: 'flex-end', backgroundColor: colors.primary + '22' }
-                      : { alignSelf: 'flex-start', backgroundColor: colors.surface },
+                      ? [styles.adminBubble, { backgroundColor: colors.primary }]
+                      : [styles.userBubble, { backgroundColor: colors.card, borderColor: colors.border }],
                   ]}
                 >
-                  <Text style={[styles.bubbleRole, { color: colors.textSecondary }]}>
-                    {msg.author_role === 'admin' ? 'Admin' : 'User'}
+                  <Text style={[styles.messageBody, { color: msg.author_role === 'admin' ? '#fff' : colors.text }]}>
+                    {msg.body}
                   </Text>
-                  <Text style={[styles.bubbleBody, { color: colors.text }]}>{msg.body}</Text>
+                  <Text style={[styles.messageTime, { color: msg.author_role === 'admin' ? 'rgba(255,255,255,0.7)' : colors.textSecondary }]}>
+                    {msg.author_role === 'admin' ? 'Admin' : 'User'} · {msg.created_at ? new Date(msg.created_at).toLocaleString() : ''}
+                  </Text>
                 </View>
               ))}
             </ScrollView>
           )}
 
-          <View style={[styles.replyBar, { borderTopColor: colors.border, backgroundColor: colors.surface }]}>
+          <View style={[styles.replyContainer, { borderTopColor: colors.border }]}>
             <TextInput
-              style={[styles.replyInput, { color: colors.text, borderColor: colors.border }]}
+              style={[styles.replyInput, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
+              placeholder="Type a reply…"
+              placeholderTextColor={colors.textSecondary}
               value={reply}
               onChangeText={setReply}
-              placeholder="Write a reply…"
-              placeholderTextColor={colors.textSecondary}
               multiline
             />
-            <View style={styles.replyActions}>
-              <Button
-                title={sending ? 'Sending…' : 'Send'}
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+              <TouchableOpacity
                 onPress={sendReply}
-                style={{ flex: 1 }}
-              />
-              <Button
-                title={active?.status === 'resolved' ? 'Resolved ✓' : 'Mark Resolved'}
+                disabled={sending || !reply.trim()}
+                style={[styles.replyBtn, { backgroundColor: colors.primary, flex: 1 }]}
+              >
+                <Text style={{ color: '#fff', fontWeight: '600', textAlign: 'center' }}>
+                  {sending ? 'Sending…' : 'Send Reply'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
                 onPress={markResolved}
-                variant="secondary"
-                style={{ flex: 1 }}
-              />
+                disabled={active?.status === 'resolved'}
+                style={[styles.replyBtn, { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, flex: 1 }]}
+              >
+                <Text style={{ color: colors.text, fontWeight: '600', textAlign: 'center' }}>
+                  {active?.status === 'resolved' ? 'Resolved' : 'Mark Resolved'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -215,29 +221,28 @@ export default function AdminSupportScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { fontSize: 22, fontWeight: '700', padding: 16 },
-  threadRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+  header: { fontSize: 24, fontWeight: '700', padding: 16 },
+  threadItem: {
+    flexDirection: 'row', alignItems: 'center', padding: 16,
+    borderRadius: 12, borderWidth: 1, marginBottom: 10,
   },
-  threadSubject: { fontSize: 15, fontWeight: '600' },
-  threadMeta: { fontSize: 12, marginTop: 2 },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, marginLeft: 8 },
-  empty: { textAlign: 'center', marginTop: 60, fontSize: 15 },
+  threadSubject: { fontSize: 16, fontWeight: '600', marginBottom: 2 },
+  threadMeta: { fontSize: 13 },
   modalContainer: { flex: 1 },
   modalHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     padding: 16, borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  modalTitle: { fontSize: 17, fontWeight: '700', flex: 1, marginRight: 12 },
-  bubble: { maxWidth: '80%', borderRadius: 12, padding: 10, marginBottom: 10 },
-  bubbleRole: { fontSize: 11, marginBottom: 3 },
-  bubbleBody: { fontSize: 14 },
-  replyBar: { padding: 12, borderTopWidth: StyleSheet.hairlineWidth },
+  modalTitle: { fontSize: 17, fontWeight: '600', flex: 1, marginRight: 12 },
+  messageBubble: { borderRadius: 12, padding: 12, marginBottom: 10, maxWidth: '85%' },
+  adminBubble: { alignSelf: 'flex-end' },
+  userBubble: { alignSelf: 'flex-start', borderWidth: 1 },
+  messageBody: { fontSize: 15, lineHeight: 21 },
+  messageTime: { fontSize: 11, marginTop: 4 },
+  replyContainer: { padding: 16, borderTopWidth: StyleSheet.hairlineWidth },
   replyInput: {
-    borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8,
-    minHeight: 60, fontSize: 14, marginBottom: 8,
+    borderRadius: 10, borderWidth: 1, padding: 12,
+    fontSize: 15, minHeight: 80, textAlignVertical: 'top',
   },
-  replyActions: { flexDirection: 'row', gap: 8 },
+  replyBtn: { padding: 14, borderRadius: 10 },
 });

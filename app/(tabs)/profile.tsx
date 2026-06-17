@@ -23,7 +23,8 @@ interface Stats { totalTrips: number; roundsPlayed: number; avgScore: number | n
 const TABS = ['Organizing', 'Participating'] as const;
 
 export default function ProfileScreen() {
-  const colors = useThemeColors();
+  const themeContext = useThemeColors();
+  const c = themeContext.colors;
   const { user } = useAuth();
   const { track } = useAnalytics();
   const router = useRouter();
@@ -64,7 +65,6 @@ export default function ProfileScreen() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const filtered = trips.filter(t => activeTab === 'Organizing' ? t.role === 'organizer' : t.role !== 'organizer');
-  const c = colors.colors;
 
   if (loading) return <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}><LoadingSkeleton variant="list" /></SafeAreaView>;
 
@@ -77,43 +77,35 @@ export default function ProfileScreen() {
         ListHeaderComponent={
           <View>
             {/* Header */}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: c.primaryMuted, justifyContent: 'center', alignItems: 'center' }}>
-                  <Text style={{ fontSize: 24 }}>🏌️</Text>
-                </View>
-                <View>
-                  <Text style={{ fontSize: 20, fontWeight: '700', color: c.text }}>
-                    {user?.user_metadata?.display_name ?? 'Golfer'}
-                  </Text>
-                  <Text style={{ fontSize: 13, color: c.textSecondary }}>{user?.email}</Text>
-                </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingBottom: 8 }}>
+              <View>
+                <Text style={{ fontSize: 26, fontWeight: '800', color: c.text }}>Profile</Text>
+                <Text style={{ fontSize: 14, color: c.textSecondary }}>{user?.email}</Text>
               </View>
-              <Pressable
-                onPress={() => router.push('/(tabs)/settings')}
-                style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: c.surface, justifyContent: 'center', alignItems: 'center' }}
-              >
-                <Settings size={20} color={c.textSecondary} />
+              <Pressable onPress={() => router.push('/(tabs)/settings' as never)} style={{ padding: 8 }}>
+                <Settings size={22} color={c.text} />
               </Pressable>
             </View>
 
-            {/* Stats Row */}
-            <View style={{ flexDirection: 'row', marginHorizontal: 16, gap: 10, marginBottom: 16 }}>
-              {[
-                { label: 'Trips', value: stats.totalTrips },
-                { label: 'Rounds', value: stats.roundsPlayed },
-                { label: 'Avg Score', value: stats.avgScore != null ? stats.avgScore.toFixed(1) : '—' },
-              ].map((s) => (
-                <View key={s.label} style={{ flex: 1, backgroundColor: c.surface, borderRadius: 12, padding: 14, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 22, fontWeight: '800', color: c.text }}>{String(s.value)}</Text>
-                  <Text style={{ fontSize: 11, color: c.textSecondary, marginTop: 2 }}>{s.label}</Text>
-                </View>
-              ))}
+            {/* Stats */}
+            <View style={{ flexDirection: 'row', padding: 16, gap: 12 }}>
+              <View style={{ flex: 1, backgroundColor: c.card, borderRadius: 12, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: c.border }}>
+                <Text style={{ fontSize: 24, fontWeight: '800', color: c.primary }}>{stats.totalTrips}</Text>
+                <Text style={{ fontSize: 12, color: c.textSecondary, marginTop: 2 }}>Trips</Text>
+              </View>
+              <View style={{ flex: 1, backgroundColor: c.card, borderRadius: 12, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: c.border }}>
+                <Text style={{ fontSize: 24, fontWeight: '800', color: c.primary }}>{stats.roundsPlayed}</Text>
+                <Text style={{ fontSize: 12, color: c.textSecondary, marginTop: 2 }}>Rounds</Text>
+              </View>
+              <View style={{ flex: 1, backgroundColor: c.card, borderRadius: 12, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: c.border }}>
+                <Text style={{ fontSize: 24, fontWeight: '800', color: c.primary }}>{stats.avgScore ?? '—'}</Text>
+                <Text style={{ fontSize: 12, color: c.textSecondary, marginTop: 2 }}>Avg Score</Text>
+              </View>
             </View>
 
             {/* Tabs */}
-            <View style={{ flexDirection: 'row', marginHorizontal: 16, marginBottom: 12, backgroundColor: c.surface, borderRadius: 10, padding: 3 }}>
-              {TABS.map((tab) => (
+            <View style={{ flexDirection: 'row', marginHorizontal: 16, marginBottom: 12, backgroundColor: c.card, borderRadius: 10, padding: 4, borderWidth: 1, borderColor: c.border }}>
+              {TABS.map(tab => (
                 <Pressable
                   key={tab}
                   onPress={() => setActiveTab(tab)}
@@ -122,7 +114,7 @@ export default function ProfileScreen() {
                     backgroundColor: activeTab === tab ? c.primary : 'transparent',
                   }}
                 >
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: activeTab === tab ? '#fff' : c.textSecondary }}>
+                  <Text style={{ fontWeight: '600', fontSize: 14, color: activeTab === tab ? '#fff' : c.textSecondary }}>
                     {tab}
                   </Text>
                 </Pressable>
@@ -130,20 +122,22 @@ export default function ProfileScreen() {
             </View>
           </View>
         }
-        renderItem={({ item }) => (
-          <Animated.View entering={FadeInDown.duration(300)}>
-            <ProfileTripCard trip={item} onPress={() => router.push(`/(tabs)/trip/${item.id}/itinerary` as never)} />
-          </Animated.View>
-        )}
         ListEmptyComponent={
           <EmptyState
-            icon={<MapPin size={40} color={c.textSecondary} />}
-            title="No trips yet"
-            description={activeTab === 'Organizing' ? "You haven't organized any trips yet." : "You haven't joined any trips yet."}
-            action={{ label: 'Browse Trips', onPress: () => router.push('/(tabs)/dashboard') }}
+            icon={MapPin}
+            title={activeTab === 'Organizing' ? 'No trips organized' : 'Not participating in any trips'}
+            description={activeTab === 'Organizing' ? 'Create your first trip to get started!' : 'Join a trip using an invite code.'}
           />
         }
-        contentContainerStyle={{ paddingBottom: 32 }}
+        renderItem={({ item }) => (
+          <Animated.View entering={FadeInDown.springify()} style={{ paddingHorizontal: 16, marginBottom: 10 }}>
+            <ProfileTripCard
+              trip={item}
+              onPress={() => router.push(`/(tabs)/trip/${item.id}/itinerary` as never)}
+            />
+          </Animated.View>
+        )}
+        contentContainerStyle={{ paddingBottom: 100 }}
       />
     </SafeAreaView>
   );

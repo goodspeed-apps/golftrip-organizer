@@ -38,7 +38,8 @@ interface RecapData {
 }
 
 export default function TripRecapScreen() {
-  const colors = useThemeColors();
+  const themeContext = useThemeColors();
+  const colors = themeContext.colors;
   const { track } = useAnalytics();
   const { user } = useAuth();
   const { showPaywall } = usePaywall();
@@ -89,7 +90,7 @@ export default function TripRecapScreen() {
       });
       trackScreenLoad('TripRecap', start);
     } catch (err) {
-      captureException(err, { screen: 'TripRecap', action: 'fetchRecap' });
+      captureException(err as Error, { screen: 'TripRecap', action: 'fetchRecap' });
       setError('Failed to load trip recap.');
     } finally {
       setLoading(false);
@@ -98,99 +99,93 @@ export default function TripRecapScreen() {
   }, [tripId]);
 
   useEffect(() => {
-    track('screen_view_trip_recap', { tripId });
+    track('screen_view_trip_recap', { trip_id: tripId });
     fetchRecap();
   }, [fetchRecap]);
 
-  const handleUnlock = async () => {
+  const onRefresh = useCallback(() => { setRefreshing(true); fetchRecap(); }, [fetchRecap]);
+
+  const handleUnlock = useCallback(async () => {
+    if (purchasing) return;
     setPurchasing(true);
-    track('tap_unlock_recap', { tripId });
     try {
-      await showPaywall({ productId: 'trip_recap_299' });
-      await supabase.from('trips').update({ recap_unlocked: true }).eq('id', tripId);
-      setRecap((prev) => prev ? { ...prev, recapUnlocked: true } : prev);
-      track('recap_unlocked', { tripId });
+      scale.value = withSpring(0.96, {}, () => { scale.value = withSpring(1); });
+      await showPaywall('trip_recap');
+      track('paywall_shown', { source: 'trip_recap' });
     } catch (err) {
-      captureException(err, { screen: 'TripRecap', action: 'handleUnlock' });
+      captureException(err as Error, { screen: 'TripRecap', action: 'handleUnlock' });
+      showToast('Something went wrong. Please try again.');
     } finally {
       setPurchasing(false);
     }
-  };
+  }, [purchasing, showPaywall]);
 
-  const handleShare = async () => {
-    track('tap_share_recap', { tripId });
+  const handleShare = useCallback(async () => {
+    if (!recap) return;
     try {
-      await Share.share({ message: `Check out our golf trip recap: ${recap?.tripName ?? 'Golf Trip'}! 🏌️` });
+      await Share.share({
+        message: `🏌️ ${recap.tripName} Recap\n🏆 Winner: ${recap.winnerName}\n⛳ ${recap.totalRounds} rounds played\n📍 ${recap.courses.join(', ')}`,
+      });
+      track('share_recap', { trip_id: tripId });
     } catch (err) {
-      captureException(err, { screen: 'TripRecap', action: 'handleShare' });
+      captureException(err as Error, { screen: 'TripRecap', action: 'handleShare' });
     }
-  };
+  }, [recap]);
 
-  const handleDownload = () => {
-    track('tap_download_recap', { tripId });
-    showToast({ message: 'Saved to Photos', type: 'success' });
-  };
+  if (loading) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+        <LoadingSkeleton variant="list" />
+      </SafeAreaView>
+    );
+  }
 
-  if (loading) return <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}><LoadingSkeleton variant="card" /></SafeAreaView>;
-  if (error || !recap) return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <EmptyState icon="alert-circle" title="Couldn't Load Recap" description={error ?? 'No data found.'} actionLabel="Retry" onAction={fetchRecap} />
-    </SafeAreaView>
-  );
+  if (error || !recap) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+        <EmptyState icon={Trophy} title="No Recap Yet" description={error ?? 'The trip recap is not available yet.'} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
-        contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchRecap(); }} tintColor={colors.primary} />}
+        contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <Text style={{ fontSize: 22, fontFamily: 'PlusJakartaSans_700Bold', color: colors.text }}>{recap.tripName}</Text>
-          <Pressable onPress={() => router.back()} accessibilityLabel="Close" accessibilityHint="Closes this modal" hitSlop={8}>
-            <X size={24} color={colors.textSecondary} />
+        {/* Header */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+          <Pressable onPress={() => router.back()} style={{ marginRight: 12 }}>
+            <X size={22} color={colors.text} />
           </Pressable>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 22, fontWeight: '700', color: colors.text }}>{recap.tripName}</Text>
+            <Text style={{ fontSize: 13, color: colors.textSecondary }}>{recap.startDate} – {recap.endDate}</Text>
+          </View>
         </View>
 
-        <Animated.View entering={FadeInDown.delay(50)}>
-          <RecapCard recap={recap} blurred={!recap.recapUnlocked} />
-        </Animated.View>
-
-        {!recap.recapUnlocked ? (
-          <Animated.View entering={FadeInDown.delay(100)} style={{ marginTop: 24, alignItems: 'center', padding: 24, backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border }}>
-            <Lock size={32} color={colors.primary} style={{ marginBottom: 12 }} />
-            <Text style={{ fontSize: 18, fontFamily: 'PlusJakartaSans_700Bold', color: colors.text, textAlign: 'center', marginBottom: 8 }}>Unlock Your Trip Recap</Text>
-            <Text style={{ fontSize: 14, fontFamily: 'Inter_400Regular', color: colors.textSecondary, textAlign: 'center', marginBottom: 20 }}>{"Get a shareable recap card with your trip's highlights, winner, and costs, one-time purchase."}</Text>
+        {recap.recapUnlocked ? (
+          <>
+            <RecapCard recap={recap} onShare={handleShare} />
+          </>
+        ) : (
+          <Animated.View style={[pressStyle, { backgroundColor: colors.card, borderRadius: 16, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: colors.border }]}>
+            <Lock size={40} color={colors.primary} style={{ marginBottom: 16 }} />
+            <Text style={{ fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 8, textAlign: 'center' }}>
+              Unlock Trip Recap
+            </Text>
+            <Text style={{ fontSize: 14, color: colors.textSecondary, textAlign: 'center', marginBottom: 24, lineHeight: 20 }}>
+              Get detailed stats, leaderboards, and shareable highlights for this trip.
+            </Text>
             <Pressable
               onPress={handleUnlock}
               disabled={purchasing}
-              accessibilityLabel="Unlock Recap for $2.99"
-              accessibilityHint="One-time purchase to unlock the shareable trip recap card"
-              style={{ backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32, minWidth: 200, alignItems: 'center' }}
+              style={{ backgroundColor: colors.primary, paddingHorizontal: 32, paddingVertical: 14, borderRadius: 12 }}
             >
-              {purchasing ? <ActivityIndicator color={colors.textOnPrimary} /> : <Text style={{ fontSize: 16, fontFamily: 'PlusJakartaSans_700Bold', color: colors.textOnPrimary }}>Unlock Recap, $2.99</Text>}
-            </Pressable>
-          </Animated.View>
-        ) : (
-          <Animated.View entering={FadeInDown.delay(100)} style={{ marginTop: 24, gap: 12 }}>
-            <Animated.View style={pressStyle}>
-              <Pressable
-                onPress={handleShare}
-                onPressIn={() => { scale.value = withSpring(0.97); }}
-                onPressOut={() => { scale.value = withSpring(1); }}
-                accessibilityLabel="Share recap"
-                accessibilityHint="Opens the native share sheet to share your trip recap"
-                style={{ backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: 'center' }}
-              >
-                <Text style={{ fontSize: 16, fontFamily: 'PlusJakartaSans_700Bold', color: colors.textOnPrimary }}>Share Recap</Text>
-              </Pressable>
-            </Animated.View>
-            <Pressable
-              onPress={handleDownload}
-              accessibilityLabel="Download recap image"
-              accessibilityHint="Saves the recap card to your Camera Roll"
-              style={{ backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: colors.border }}
-            >
-              <Text style={{ fontSize: 16, fontFamily: 'PlusJakartaSans_600SemiBold', color: colors.text }}>Save to Photos</Text>
+              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>
+                {purchasing ? 'Loading…' : 'Unlock Recap'}
+              </Text>
             </Pressable>
           </Animated.View>
         )}

@@ -100,45 +100,44 @@ export default function ScoreEntryModal() {
     setMemberScores((prev) => prev.map((m) => m.memberId === memberId ? { ...m, totalScore: value } : m));
 
   const updateHoleScore = (memberId: string, hole: number, value: string) =>
-    setMemberScores((prev) => prev.map((m) => m.memberId === memberId
-      ? { ...m, holeScores: m.holeScores.map((h, i) => i === hole ? value : h) }
-      : m
-    ));
+    setMemberScores((prev) => prev.map((m) => {
+      if (m.memberId !== memberId) return m;
+      const holeScores = [...m.holeScores];
+      holeScores[hole] = value;
+      return { ...m, holeScores };
+    }));
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
+    if (!roundId) return;
     setSaving(true);
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      const end = trackApiLatency('save_scores');
       const upserts = memberScores
-        .filter((m) => m.totalScore !== '' || m.holeScores.some((h) => h !== ''))
+        .filter((m) => m.totalScore.trim() !== '' || m.holeScores.some((h) => h !== ''))
         .map((m) => ({
+          id: m.existingScoreId,
           round_id: roundId,
           member_id: m.memberId,
           total_score: m.totalScore !== '' ? parseInt(m.totalScore, 10) : null,
-          hole_scores: m.holeScores,
-          ...(m.existingScoreId ? { id: m.existingScoreId } : {}),
+          hole_scores: holeByHole ? m.holeScores : null,
         }));
-
       if (upserts.length === 0) {
-        showToast('No scores to save', 'info');
+        showToast('No scores to save.');
         setSaving(false);
         return;
       }
-
-      const { error: upsertErr } = await supabase.from('scores').upsert(upserts, { onConflict: 'id' });
-      end();
-      if (upsertErr) throw upsertErr;
-      track('scores_saved', { roundId, count: upserts.length });
-      showToast('Scores saved!', 'success');
+      const { error } = await supabase.from('scores').upsert(upserts, { onConflict: 'round_id,member_id' });
+      if (error) throw error;
+      track('scores_saved', { round_id: roundId, count: upserts.length });
+      showToast('Scores saved!');
       router.back();
     } catch (e) {
       captureException(e as Error, { screen: 'ScoreEntry', action: 'handleSave' });
-      showToast('Could not save scores. Try again.', 'error');
+      showToast('Failed to save scores. Please try again.');
     } finally {
       setSaving(false);
     }
-  };
+  }, [roundId, memberScores, holeByHole]);
 
   if (loading) {
     return (
@@ -151,7 +150,7 @@ export default function ScoreEntryModal() {
   if (error) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-        <EmptyState icon={null} title="Error" subtitle={error} />
+        <EmptyState icon={X} title="Error" description={error} />
       </SafeAreaView>
     );
   }
@@ -160,55 +159,51 @@ export default function ScoreEntryModal() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {/* Header */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16 }}>
-          <View>
-            <Text style={{ fontSize: 20, fontWeight: '700', color: colors.text, fontFamily: 'Manrope_700Bold' }}>Score Entry</Text>
-            {roundInfo && (
-              <Text style={{ fontSize: 13, color: colors.textSecondary, fontFamily: 'Manrope_400Regular' }}>
-                {roundInfo.courseName} · {roundInfo.roundDate}
-              </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+          <Pressable onPress={() => router.back()} style={{ marginRight: 12 }}>
+            <X size={22} color={colors.text} />
+          </Pressable>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text }}>{roundInfo?.courseName ?? 'Score Entry'}</Text>
+            {roundInfo?.roundDate && (
+              <Text style={{ fontSize: 13, color: colors.textSecondary }}>{roundInfo.roundDate}</Text>
             )}
           </View>
-          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-            <TouchableOpacity onPress={() => setHoleByHole(!holeByHole)} style={{ padding: 8 }}>
-              {holeByHole ? <List size={20} color={colors.primary} /> : <Grid size={20} color={colors.primary} />}
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>
-              <X size={22} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }} keyboardShouldPersistTaps="handled">
-          {memberScores.map((ms, idx) => (
-            <Animated.View key={ms.memberId} entering={FadeInDown.delay(idx * 40).duration(300)}>
-              <ScorePlayerRow
-                memberScore={ms}
-                holeByHole={holeByHole}
-                onScoreChange={(value: string) => updateScore(ms.memberId, value)}
-                onHoleScoreChange={(hole: number, value: string) => updateHoleScore(ms.memberId, hole, value)}
-                colors={colors as Record<string, string>}
-              />
-            </Animated.View>
-          ))}
-        </ScrollView>
-
-        {/* Save Button */}
-        <View style={{ padding: 20 }}>
+          <TouchableOpacity
+            onPress={() => setHoleByHole(v => !v)}
+            style={{ marginRight: 12, padding: 6 }}
+          >
+            {holeByHole ? <List size={20} color={colors.primary} /> : <Grid size={20} color={colors.primary} />}
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={handleSave}
             disabled={saving}
-            style={{ backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 }}
+            style={{ backgroundColor: colors.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10 }}
           >
             {saving
-              ? <ActivityIndicator color="#fff" />
-              : <>
-                  <Save size={18} color="#fff" />
-                  <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: 'Manrope_700Bold' }}>Save Scores</Text>
-                </>
+              ? <ActivityIndicator size="small" color="#fff" />
+              : <Save size={18} color="#fff" />
             }
           </TouchableOpacity>
         </View>
+
+        <ScrollView contentContainerStyle={{ padding: 16 }}>
+          {memberScores.length === 0 ? (
+            <EmptyState icon={Grid} title="No members" description="No members found for this round." />
+          ) : (
+            memberScores.map((ms, idx) => (
+              <Animated.View key={ms.memberId} entering={FadeInDown.delay(idx * 50)}>
+                <ScorePlayerRow
+                  memberScore={ms}
+                  holeByHole={holeByHole}
+                  onScoreChange={(value: string) => updateScore(ms.memberId, value)}
+                  onHoleScoreChange={(hole: number, value: string) => updateHoleScore(ms.memberId, hole, value)}
+                  colors={colors}
+                />
+              </Animated.View>
+            ))
+          )}
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

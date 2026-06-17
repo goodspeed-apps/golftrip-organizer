@@ -106,97 +106,109 @@ export default function EmailImportScreen() {
         tee_time: item.parsed_tee_time,
         player_count: item.parsed_player_count,
         confirmation_number: item.parsed_confirmation_number,
-      }).select('id').single();
+      }).select().single();
       if (ttErr) throw ttErr;
 
-      await supabase.from('email_imports').update({
-        parse_status: 'confirmed',
-        tee_time_id: ttData.id,
-      }).eq('id', item.id);
+      const { error: updateErr } = await supabase
+        .from('email_imports')
+        .update({ parse_status: 'confirmed', tee_time_id: ttData?.id })
+        .eq('id', item.id);
+      if (updateErr) throw updateErr;
 
       setConfirmedIds(prev => new Set([...prev, item.id]));
       setImports(prev => prev.filter(i => i.id !== item.id));
-      showToast('Tee time confirmed!', 'success');
-      track('email_import_confirmed', { import_id: item.id, trip_id: tripId });
+      track('email_import_confirmed', { trip_id: tripId, import_id: item.id });
+      showToast('Tee time added successfully!');
     } catch (err) {
       captureException(err as Error, { screen: 'email_import', action: 'handleConfirm' });
-      showToast('Could not confirm tee time. Try again.', 'error');
+      showToast('Failed to confirm tee time. Please try again.');
     }
   };
 
   const handleDismiss = async (item: EmailImport) => {
     try {
-      await supabase.from('email_imports').update({ parse_status: 'parse_failed_manual_fallback' }).eq('id', item.id);
+      const { error } = await supabase
+        .from('email_imports')
+        .update({ parse_status: 'confirmed' })
+        .eq('id', item.id);
+      if (error) throw error;
       setImports(prev => prev.filter(i => i.id !== item.id));
-      track('email_import_dismissed', { import_id: item.id, trip_id: tripId });
+      track('email_import_dismissed', { trip_id: tripId, import_id: item.id });
     } catch (err) {
       captureException(err as Error, { screen: 'email_import', action: 'handleDismiss' });
     }
   };
 
-  const onRefresh = () => { setRefreshing(true); fetchData(); };
+  const c = colors.colors;
 
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.colors.background }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>
         <LoadingSkeleton variant="list" />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.colors.background }}>
-      {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16 }}>
-        <Text style={{ fontSize: 20, fontWeight: '700', color: colors.colors.text, fontFamily: 'Manrope_700Bold' }}>Email Import</Text>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <Text style={{ color: colors.colors.primary, fontSize: 16 }}>Done</Text>
-        </Pressable>
-      </View>
-
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>
       <ScrollView
-        contentContainerStyle={{ padding: 20, gap: 16 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.colors.primary} />}
+        contentContainerStyle={{ padding: 16 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => { setRefreshing(true); fetchData(); }}
+            tintColor={c.primary}
+          />
+        }
       >
-        {/* Trip Email Address Card */}
-        <Animated.View entering={FadeInDown.delay(0).duration(350)}>
-          <View style={{ backgroundColor: colors.colors.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.colors.border }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <Mail size={18} color={colors.colors.primary} />
-              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.colors.text, fontFamily: 'Manrope_600SemiBold' }}>Forward Confirmation Emails To</Text>
-            </View>
-            <Text style={{ fontSize: 13, color: colors.colors.textSecondary, marginBottom: 12, fontFamily: 'Manrope_400Regular' }}>
-              Forward your tee time confirmation emails to this address and we'll parse them automatically.
+        {/* Header */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
+          <Pressable onPress={() => router.back()} style={{ marginRight: 12 }}>
+            <Text style={{ color: c.primary, fontSize: 16 }}>← Back</Text>
+          </Pressable>
+          <Text style={{ fontSize: 22, fontWeight: '700', color: c.text, flex: 1 }}>Email Import</Text>
+        </View>
+
+        {/* Trip Email Address */}
+        <View style={{ backgroundColor: c.card, borderRadius: 14, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: c.border }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+            <Mail size={18} color={c.primary} style={{ marginRight: 8 }} />
+            <Text style={{ fontWeight: '600', color: c.text, fontSize: 15 }}>Your Trip Email Address</Text>
+          </View>
+          <Text style={{ color: c.textSecondary, fontSize: 13, marginBottom: 12 }}>
+            Forward tee time confirmation emails to this address and we'll automatically parse them.
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: c.background, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: c.border }}>
+            <Text style={{ flex: 1, color: c.text, fontSize: 14, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }} numberOfLines={1}>
+              {tripEmail || 'Loading…'}
             </Text>
-            <Pressable
-              onPress={handleCopy}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.colors.background, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: colors.colors.border }}
-            >
-              <Text style={{ flex: 1, fontSize: 13, color: colors.colors.primary, fontFamily: 'Manrope_500Medium' }} numberOfLines={1}>
-                {tripEmail || 'Loading…'}
-              </Text>
+            <Pressable onPress={handleCopy} style={{ marginLeft: 8 }}>
               {copied
-                ? <CheckCircle size={18} color={colors.colors.success} />
-                : <Copy size={18} color={colors.colors.primary} />
+                ? <CheckCircle size={20} color="#22C55E" />
+                : <Copy size={20} color={c.primary} />
               }
             </Pressable>
           </View>
-        </Animated.View>
+        </View>
 
-        {/* Imports List */}
+        {/* Pending Imports */}
+        <Text style={{ fontSize: 17, fontWeight: '700', color: c.text, marginBottom: 12 }}>
+          Pending Imports {imports.length > 0 ? `(${imports.length})` : ''}
+        </Text>
+
         {imports.length === 0 ? (
           <EmptyState
-            icon={<Mail size={40} color={colors.colors.textSecondary} />}
+            icon={Mail}
             title="No pending imports"
-            subtitle="Forward a tee time confirmation email to the address above."
+            description="Forward a tee time confirmation email to your trip address and it will appear here."
           />
         ) : (
           imports.map((item, index) => (
-            <Animated.View key={item.id} entering={FadeInDown.delay(index * 60).duration(350)} exiting={FadeOutRight.duration(300)}>
+            <Animated.View key={item.id} entering={FadeInDown.delay(index * 60)}>
               <ImportEntryCard
                 item={item}
-                onConfirm={() => handleConfirm(item)}
-                onDismiss={() => handleDismiss(item)}
+                onConfirm={async () => { await handleConfirm(item); }}
+                onDismiss={async () => { await handleDismiss(item); }}
               />
             </Animated.View>
           ))
