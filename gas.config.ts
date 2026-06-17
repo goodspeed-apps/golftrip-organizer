@@ -336,7 +336,7 @@ export const gasConfig: GasConfig = {
   "app": {
     "name": "GolfTrip Organizer",
     "slug": "golftrip-organizer",
-    "description": "GolfTrip Organizer eliminates 10-20 hours of trip coordination by consolidating tee time management, group itineraries, automatic cost splitting, and real-time group communication into a single trip workspace — giving every member one source of truth from the first invite link through final settlement.",
+    "description": "GolfTrip Organizer eliminates 10-20 hours of trip coordination by consolidating tee time management, group itineraries, automatic cost splitting, and real-time group communication into a single trip workspace, giving every member one source of truth from the first invite link through final settlement.",
     "scheme": "golftrip-organizer",
     "version": "1.0.0",
     "minRuntimeVersion": "1.0.0",
@@ -409,11 +409,11 @@ export const gasConfig: GasConfig = {
         "New chat message in your trip",
         "Organizer announcement posted",
         "New member joined your trip",
-        "Expense added — your share updated",
-        "Scores entered — leaderboard updated",
-        "Trip starts tomorrow — check itinerary",
+        "Expense added, your share updated",
+        "Scores entered, leaderboard updated",
+        "Trip starts tomorrow, check itinerary",
         "Round finished? Log scores now (Day 3-5 post-round retention hook)",
-        "Your trip is complete — generate your Recap Card"
+        "Your trip is complete, generate your Recap Card"
       ]
     },
     "inAppPurchases": {
@@ -459,7 +459,7 @@ export const gasConfig: GasConfig = {
             "All Recap Cards included for every trip (unlimited)",
             "In-app payment settlement tracking with Venmo/PayPal deep-link integration",
             "Hole-by-hole scorecard entry",
-            "Game format library (Skins, Nassau, Stableford, Wolf — auto-calculated side bets)",
+            "Game format library (Skins, Nassau, Stableford, Wolf, auto-calculated side bets)",
             "Up to 50 members per trip",
             "Year-over-year performance comparison across all trips",
             "Priority email support"
@@ -624,7 +624,7 @@ export const gasConfig: GasConfig = {
     "tabs": [
       {
         "id": "dashboard",
-        "label": "Dashboard — My Trips",
+        "label": "Dashboard, My Trips",
         "icon": "Home",
         "file": "dashboard"
       },
@@ -722,15 +722,15 @@ export const gasConfig: GasConfig = {
   },
   "backend": {
     "supabase": {
-      "url": "",
-      "anonKey": ""
+      "url": "https://vorpmnvcrviqfpkbfwzw.supabase.co",
+      "anonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZvcnBtbnZjcnZpcWZwa2Jmd3p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzMjQ5OTcsImV4cCI6MjA5NjkwMDk5N30.Lf6ydP1dZF63uVx03bQu39CgaPvqg0JYEHIss6m6Czw"
     },
     "revenuecat": {
       "iosKey": "",
       "androidKey": ""
     },
     "posthog": {
-      "apiKey": "",
+      "apiKey": "phc_2dufJlYGfGdf9BKcI1fiRh7GrmY0UZoN9a9MnPN3krW",
       "host": "https://us.i.posthog.com"
     },
     "telemetry": {

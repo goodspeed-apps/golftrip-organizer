@@ -99,7 +99,7 @@ if (process.env.EXPO_PUBLIC_SENTRY_DSN) {
   ]);
 }
 
-const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID ?? 'YOUR_PROJECT_ID';
+const EAS_PROJECT_ID = 'd662cc12-d08f-499b-8086-095fe6ebb829';
 
 module.exports = ({ config: expoConfig }) => ({
   ...expoConfig,
@@ -149,7 +149,7 @@ web: {
     url: `https://u.expo.dev/${EAS_PROJECT_ID}`,
   },
   runtimeVersion: {
-    policy: 'fingerprint',
+    policy: 'appVersion',
   },
   extra: {
     eas: {

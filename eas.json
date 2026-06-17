@@ -6,7 +6,19 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EAS_PROJECT_ID": "d662cc12-d08f-499b-8086-095fe6ebb829",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://vorpmnvcrviqfpkbfwzw.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZvcnBtbnZjcnZpcWZwa2Jmd3p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzMjQ5OTcsImV4cCI6MjA5NjkwMDk5N30.Lf6ydP1dZF63uVx03bQu39CgaPvqg0JYEHIss6m6Czw",
+        "EXPO_PUBLIC_GOODSPEED_APP_ID": "a5e0662d-ff44-45cd-86ec-ffae27b5fb91",
+        "EXPO_PUBLIC_POSTHOG_API_KEY": "phc_2dufJlYGfGdf9BKcI1fiRh7GrmY0UZoN9a9MnPN3krW",
+        "EXPO_PUBLIC_POSTHOG_HOST": "https://us.i.posthog.com",
+        "GAS_BUNDLE_ID": "com.goodspeed.golftrip-organizer"
+      },
+      "ios": {
+        "credentialsSource": "local"
+      }
     },
     "preview": {
       "autoIncrement": true,
@@ -17,13 +29,21 @@
         "simulator": false,
         "image": "macos-sequoia-15.6-xcode-26.2",
         "buildConfiguration": "Release",
-        "resourceClass": "medium"
+        "resourceClass": "medium",
+        "credentialsSource": "local"
       },
       "android": {
         "resourceClass": "medium"
       },
       "env": {
-        "EXPO_PUBLIC_RELEASE_CHANNEL": "preview"
+        "EXPO_PUBLIC_RELEASE_CHANNEL": "preview",
+        "EAS_PROJECT_ID": "d662cc12-d08f-499b-8086-095fe6ebb829",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://vorpmnvcrviqfpkbfwzw.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZvcnBtbnZjcnZpcWZwa2Jmd3p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzMjQ5OTcsImV4cCI6MjA5NjkwMDk5N30.Lf6ydP1dZF63uVx03bQu39CgaPvqg0JYEHIss6m6Czw",
+        "EXPO_PUBLIC_GOODSPEED_APP_ID": "a5e0662d-ff44-45cd-86ec-ffae27b5fb91",
+        "EXPO_PUBLIC_POSTHOG_API_KEY": "phc_2dufJlYGfGdf9BKcI1fiRh7GrmY0UZoN9a9MnPN3krW",
+        "EXPO_PUBLIC_POSTHOG_HOST": "https://us.i.posthog.com",
+        "GAS_BUNDLE_ID": "com.goodspeed.golftrip-organizer"
       }
     },
     "preview-sim": {
@@ -31,7 +51,8 @@
       "channel": "preview",
       "node": "22.13.0",
       "ios": {
-        "simulator": true
+        "simulator": true,
+        "credentialsSource": "local"
       },
       "env": {
         "EXPO_PUBLIC_RELEASE_CHANNEL": "preview"
@@ -45,13 +66,21 @@
       "ios": {
         "image": "macos-sequoia-15.6-xcode-26.2",
         "buildConfiguration": "Release",
-        "resourceClass": "medium"
+        "resourceClass": "medium",
+        "credentialsSource": "local"
       },
       "android": {
         "resourceClass": "medium"
       },
       "env": {
-        "EXPO_PUBLIC_RELEASE_CHANNEL": "staging"
+        "EXPO_PUBLIC_RELEASE_CHANNEL": "staging",
+        "EAS_PROJECT_ID": "d662cc12-d08f-499b-8086-095fe6ebb829",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://vorpmnvcrviqfpkbfwzw.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZvcnBtbnZjcnZpcWZwa2Jmd3p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzMjQ5OTcsImV4cCI6MjA5NjkwMDk5N30.Lf6ydP1dZF63uVx03bQu39CgaPvqg0JYEHIss6m6Czw",
+        "EXPO_PUBLIC_GOODSPEED_APP_ID": "a5e0662d-ff44-45cd-86ec-ffae27b5fb91",
+        "EXPO_PUBLIC_POSTHOG_API_KEY": "phc_2dufJlYGfGdf9BKcI1fiRh7GrmY0UZoN9a9MnPN3krW",
+        "EXPO_PUBLIC_POSTHOG_HOST": "https://us.i.posthog.com",
+        "GAS_BUNDLE_ID": "com.goodspeed.golftrip-organizer"
       }
     },
     "production": {
@@ -61,13 +90,21 @@
       "ios": {
         "image": "macos-sequoia-15.6-xcode-26.2",
         "buildConfiguration": "Release",
-        "resourceClass": "medium"
+        "resourceClass": "medium",
+        "credentialsSource": "local"
       },
       "android": {
         "resourceClass": "medium"
       },
       "env": {
-        "EXPO_PUBLIC_RELEASE_CHANNEL": "production"
+        "EXPO_PUBLIC_RELEASE_CHANNEL": "production",
+        "EAS_PROJECT_ID": "d662cc12-d08f-499b-8086-095fe6ebb829",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://vorpmnvcrviqfpkbfwzw.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZvcnBtbnZjcnZpcWZwa2Jmd3p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzMjQ5OTcsImV4cCI6MjA5NjkwMDk5N30.Lf6ydP1dZF63uVx03bQu39CgaPvqg0JYEHIss6m6Czw",
+        "EXPO_PUBLIC_GOODSPEED_APP_ID": "a5e0662d-ff44-45cd-86ec-ffae27b5fb91",
+        "EXPO_PUBLIC_POSTHOG_API_KEY": "phc_2dufJlYGfGdf9BKcI1fiRh7GrmY0UZoN9a9MnPN3krW",
+        "EXPO_PUBLIC_POSTHOG_HOST": "https://us.i.posthog.com",
+        "GAS_BUNDLE_ID": "com.goodspeed.golftrip-organizer"
       }
     }
   },

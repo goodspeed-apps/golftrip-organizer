@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Share } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Share, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useThemeColors } from '@/context/ThemeContext';
 import { useAnalytics } from '@/hooks/useAnalytics';
-import { saveOnboardingAnswers } from '@/lib/onboarding-buffer';
+import { saveOnboardingAnswers, getOnboardingAnswers } from '@/lib/onboarding-buffer';
 import { trackScreenLoad } from '@/lib/performance';
 import { Link2, MessageCircle, Mail, Users } from 'lucide-react-native';
+import { gasConfig } from '../../../gas.config';
 
-const MOCK_LINK = 'https://golftrip.app/join/DEMO-LINK';
+const APP_URL = process.env.EXPO_PUBLIC_APP_URL ?? gasConfig.app.scheme + '://';
 
 export default function Step3() {
   const colors = useThemeColors();
@@ -17,20 +18,31 @@ export default function Step3() {
   const { track } = useAnalytics();
   const startTime = React.useRef(Date.now());
   const [inviteMethod, setInviteMethod] = useState<string>('');
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
 
   useEffect(() => {
     track('onboarding_step_3');
     trackScreenLoad('onboarding_step3', startTime.current);
+    loadInviteLink();
   }, []);
 
+  const loadInviteLink = async () => {
+    const answers = await getOnboardingAnswers();
+    const code = answers?.invite_code as string | undefined;
+    if (code) {
+      setInviteLink(`${APP_URL}/join/${code}`);
+    }
+  };
+
   const handleShare = async (method: string) => {
+    if (!inviteLink) return;
     setInviteMethod(method);
     track('onboarding_invite_share', { method });
-    await Share.share({ message: `Join my golf trip! ${MOCK_LINK}`, url: MOCK_LINK });
+    await Share.share({ message: `Join my golf trip! ${inviteLink}`, url: inviteLink });
   };
 
   const handleContinue = async () => {
-    track('onboarding_step_3_continue', { invite_method: inviteMethod });
+    track('onboarding_step_3_continue', { invite_method: inviteMethod || 'skipped' });
     await saveOnboardingAnswers({ invite_method: inviteMethod || 'skipped' });
     router.push('/(auth)/onboarding/step-4');
   };
@@ -54,36 +66,43 @@ export default function Step3() {
       <Animated.View entering={FadeInDown.delay(80).springify()} style={s.content}>
         <View style={s.celebration}>
           <Text style={s.emoji}>🎉</Text>
-          <Text style={s.title}>Trip created!{'\n'}Invite your crew</Text>
+          <Text style={s.title}>Trip created!{`\n`}Invite your crew</Text>
           <Text style={s.subtitle}>{"Share this link and everyone gets the full itinerary instantly, no app required."}</Text>
         </View>
 
         <View style={s.linkCard}>
           <Link2 size={16} color={colors.primary} />
-          <Text style={s.linkText} numberOfLines={1}>{MOCK_LINK}</Text>
+          {inviteLink ? (
+            <Text style={s.linkText} numberOfLines={1}>{inviteLink}</Text>
+          ) : (
+            <ActivityIndicator size="small" color={colors.primary} style={{ marginLeft: 4 }} />
+          )}
         </View>
 
         <Text style={s.sectionLabel}>Quick share</Text>
         <View style={s.shareRow}>
           <Pressable
-            style={({ pressed }) => [s.shareChip, pressed && s.pressed]}
+            style={({ pressed }) => [s.shareChip, pressed && s.pressed, !inviteLink && s.disabled]}
             onPress={() => handleShare('sms')}
+            disabled={!inviteLink}
             accessibilityLabel="Share via SMS"
           >
             <MessageCircle size={20} color={colors.primary} />
             <Text style={s.shareChipText}>Text</Text>
           </Pressable>
           <Pressable
-            style={({ pressed }) => [s.shareChip, pressed && s.pressed]}
+            style={({ pressed }) => [s.shareChip, pressed && s.pressed, !inviteLink && s.disabled]}
             onPress={() => handleShare('email')}
+            disabled={!inviteLink}
             accessibilityLabel="Share via Email"
           >
             <Mail size={20} color={colors.primary} />
             <Text style={s.shareChipText}>Email</Text>
           </Pressable>
           <Pressable
-            style={({ pressed }) => [s.shareChip, pressed && s.pressed]}
+            style={({ pressed }) => [s.shareChip, pressed && s.pressed, !inviteLink && s.disabled]}
             onPress={() => handleShare('other')}
+            disabled={!inviteLink}
             accessibilityLabel="Share via other app"
           >
             <Users size={20} color={colors.primary} />
@@ -149,4 +168,5 @@ const styles = (colors: ReturnType<typeof useThemeColors>) =>
     skip: { alignItems: 'center', paddingVertical: 10, minHeight: 44, justifyContent: 'center' },
     skipText: { fontSize: 14, fontFamily: 'Manrope_400Regular', color: colors.textMuted },
     pressed: { opacity: 0.75, transform: [{ scale: 0.97 }] },
+    disabled: { opacity: 0.4 },
   });
