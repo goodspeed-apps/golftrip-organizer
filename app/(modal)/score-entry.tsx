@@ -41,6 +41,12 @@ type RoundInfo = {
 };
 
 export default function ScoreEntryModal() {
+  // [gate-demo] Injected runtime crash to validate Gate 1's catch + auto-repair on an UNWRAPPED
+  // modal screen. It throws during render, so the screen blanks with no visible error text — caught
+  // ONLY by the new uncaught-exception (pageerror) detection, not the visible-text check. Delete
+  // these two lines to restore the real screen (which is exactly what the auto-repair should do).
+  const gateDemoCrash: any = null;
+  gateDemoCrash.renderBoom();
   const themeContext = useThemeColors();
   const colors = themeContext.colors;
   const router = useRouter();
