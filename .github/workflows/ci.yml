@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Security audit
+        run: pnpm audit --audit-level high || true
+      - name: Validate Expo config
+        run: pnpm exec expo config --type public > /dev/null
+      - name: Build smoke test (web export)
+        run: pnpm exec expo export --platform web --output-dir /tmp/export-check
+      - name: Bundle size budget
+        run: node scripts/check-bundle-size.mjs --skip-export --output-dir /tmp/export-check
+      - run: pnpm exec tsc --noEmit
+      - run: pnpm run lint
+      - name: Run tests with coverage
+        env:
+          # GH ubuntu-latest has 7GB. Jest's full coverage run blows past
+          # Node's default 2GB heap on the smoke + lib + hooks projects
+          # together, so we bump it. --workerIdleMemoryLimit lets Jest
+          # recycle workers between files so a single leak doesn't poison
+          # the whole run.
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: pnpm exec jest --ci --coverage --workerIdleMemoryLimit=512MB
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 14

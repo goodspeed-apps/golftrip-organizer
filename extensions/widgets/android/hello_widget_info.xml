@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- extensions/widgets/android/hello_widget_info.xml
+     Place this file at res/xml/hello_widget_info.xml in your Android project.
+     Defines the widget dimensions, update period, and home-screen preview. -->
+
+<appwidget-provider
+    xmlns:android="http://schemas.android.com/apk/res/android"
+
+    <!-- Minimum size: 2 columns × 1 row (110dp × 40dp standard cell sizes) -->
+    android:minWidth="180dp"
+    android:minHeight="40dp"
+    android:minResizeWidth="180dp"
+    android:minResizeHeight="40dp"
+    android:resizeMode="horizontal|vertical"
+
+    <!-- Update every 15 minutes (900 000 ms — Android minimum enforced interval) -->
+    android:updatePeriodMillis="900000"
+
+    <!-- Layout inflated by HelloWidgetProvider.updateWidget() -->
+    android:initialLayout="@layout/hello_widget"
+
+    <!-- Widget picker preview (replace with a proper screenshot drawable) -->
+    android:previewImage="@drawable/widget_preview"
+
+    android:widgetCategory="home_screen"
+    android:widgetFeatures="reconfigurable" />

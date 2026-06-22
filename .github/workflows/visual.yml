@@ -1,0 +1,42 @@
+name: Visual Regression
+
+on:
+  pull_request:
+    paths:
+      - 'stories/**'
+      - '.storybook/**'
+      - 'package.json'
+
+jobs:
+  chromatic:
+    runs-on: ubuntu-latest
+    env:
+      CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      # Always build storybook — this catches storybook/vite build breaks even
+      # when Chromatic visual review is not configured.
+      - run: pnpm run build-storybook
+      # Publish to Chromatic only when a project token is configured. Without it
+      # (forks, or a repo where Chromatic was never set up) skip rather than fail,
+      # so a missing optional secret never blocks the build. To enable visual
+      # review, add CHROMATIC_PROJECT_TOKEN (from your Chromatic project) as a
+      # repository secret.
+      - name: Publish to Chromatic
+        if: ${{ env.CHROMATIC_PROJECT_TOKEN != '' }}
+        uses: chromaui/action@v11
+        with:
+          projectToken: ${{ env.CHROMATIC_PROJECT_TOKEN }}
+          storybookBuildDir: storybook-static
+          exitZeroOnChanges: true
+          onlyChanged: true
