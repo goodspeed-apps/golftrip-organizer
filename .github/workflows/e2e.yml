@@ -84,7 +84,7 @@ jobs:
           echo "url=$BUILD_URL" >> $GITHUB_OUTPUT
       - name: Maestro Cloud upload + run
         if: steps.build.outputs.url != ''
-        uses: mobile-dev-inc/action-maestro-cloud@v1
+        uses: mobile-dev-inc/action-maestro-cloud@v3
         with:
           api-key: ${{ secrets.MAESTRO_CLOUD_API_KEY }}
           app-file: ${{ steps.build.outputs.url }}
