@@ -1,251 +1,272 @@
-/**
- * GAS Template — Application Configuration
- *
- * Single source of truth for the generated app. The DevAgent reads this file
- * to generate screens, navigation, and feature modules.
- */
+import type {
+  GasConfig,
+  IAPTier,
+  IAPOneTimePurchase,
+  CreditsConfig,
+} from './lib/gas-config-types';
 
-// ─── Type definitions ─────────────────────────────────────────────────────────
-
-export interface IAPTier {
-  id: string;
-  name: string;
-  productId: string;
-  description: string;
-  type: 'subscription' | 'one_time';
-  price?: string;
-  features?: string[];
-  trialDays?: number;
-  credits?: number;
-}
-
-export interface IAPCreditPack {
-  id: string;
-  productId: string;
-  credits: number;
-  price?: string;
-  bonusCredits?: number;
-}
-
-export interface IAPOneTimePurchase {
-  id: string;
-  productId: string;
-  name: string;
-  description: string;
-  price?: string;
-}
-
-export interface CreditsConfig {
-  enabled: boolean;
-  currencyName: string;
-  packs: IAPCreditPack[];
-}
-
-export interface GasConfig {
+export const gasConfig = {
   app: {
-    name: string;
-    slug: string;
-    scheme: string;
-    version: string;
-    description: string;
-  };
-  design: {
-    colors: {
-      primary: string;
-      primaryDark: string;
-      secondary: string;
-      accent: string;
-      background: string;
-      backgroundDark: string;
-      surface: string;
-      surfaceDark: string;
-      text: string;
-      textDark: string;
-      textSecondary: string;
-      textSecondaryDark: string;
-      border: string;
-      borderDark: string;
-      success: string;
-      warning: string;
-      error: string;
-    };
-    typography: {
-      headingWeight: '700' | '800' | '900';
-      fontFamily?: string;
-    };
-    layout: {
-      spacing: 'compact' | 'comfortable' | 'spacious';
-      borderRadius: 'none' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
-    };
-  };
-  navigation: {
-    tabs: Array<{
-      id: string;
-      label: string;
-      icon: string;
-      file: string;
-    }>;
-    modals: string[];
-  };
-  features: {
-    analytics: { enabled: boolean; provider?: string };
-    inAppPurchases: {
-      enabled: boolean;
-      tiers: IAPTier[];
-      oneTimePurchases?: IAPOneTimePurchase[];
-      credits?: CreditsConfig;
-    };
-    darkMode: { enabled: boolean; default?: 'light' | 'dark' | 'system' };
-    helpSystem: boolean;
-    csvExport?: boolean;
-    ads: { enabled: boolean; provider: 'admob' };
-    gamification: { enabled: boolean; elements: string[] };
-    search: { enabled: boolean; entities: string[] };
-    i18n: { enabled: boolean; locales: string[]; defaultLocale: string };
-    onboarding: { enabled: boolean; steps: string[] };
-    pushNotifications: { enabled: boolean };
-    auth: {
-      google: boolean;
-      apple: boolean;
-      twitter: boolean;
-      linkedin: boolean;
-      microsoft: boolean;
-      biometric: { enabled: boolean; timeoutMinutes: number };
-    };
-  };
-  backend: {
-    supabase: {
-      url: string;
-      anonKey: string;
-    };
-  };
-  compliance: {
-    accountDeletionGracePeriod: { days: number };
-    allowImmediateDeletion?: boolean;
-  };
-  llm: {
-    provider?: string;
-    defaultChatModel?: string;
-    defaultEmbedModel?: string;
-    defaultTranscribeModel?: string;
-    defaultMaxTokens?: number;
-    budgetPeriod?: string;
-    costScope?: string;
-  };
-}
-
-// ─── Configuration ─────────────────────────────────────────────────────────────
-
-export const gasConfig: GasConfig = {
-  app: {
-    name: 'GASTemplate',
-    slug: 'gas-template',
-    scheme: 'gastemplate',
+    name: 'GolfTrip Planner',
+    slug: 'golftrip-planner',
+    scheme: 'golftrip',
     version: '1.0.0',
-    description: 'GAS Template application',
+    minRuntimeVersion: '1.0.0',
+    appStoreUrl: '',
   },
+
   design: {
     colors: {
-      primary: '#2563EB',
-      primaryDark: '#1D4ED8',
-      secondary: '#64748B',
-      accent: '#F59E0B',
-      background: '#FFFFFF',
-      backgroundDark: '#0F172A',
-      surface: '#F8FAFC',
-      surfaceDark: '#1E293B',
-      text: '#0F172A',
-      textDark: '#F8FAFC',
-      textSecondary: '#64748B',
-      textSecondaryDark: '#94A3B8',
-      border: '#E2E8F0',
-      borderDark: '#334155',
-      success: '#22C55E',
-      warning: '#F59E0B',
-      error: '#EF4444',
+      primary: '#2D6A4F',
+      primaryDark: '#1B4332',
+      secondary: '#52B788',
+      accent: '#95D5B2',
+      background: '#F8FAF9',
+      backgroundDark: '#0A0F0D',
+      surface: '#FFFFFF',
+      surfaceDark: '#1A2420',
+      text: '#1A2420',
+      textDark: '#F0F7F4',
+      textSecondary: '#4A6B5C',
+      textSecondaryDark: '#8FAF9F',
+      border: '#D8EEE3',
+      borderDark: '#2D4A3E',
+      success: '#52B788',
+      warning: '#F4A261',
+      error: '#E63946',
     },
+    mood: 'calm',
     typography: {
-      headingWeight: '700',
+      displayFont: 'Outfit',
+      bodyFont: 'Manrope',
+      monoFont: 'SpaceMono',
     },
     layout: {
-      spacing: 'comfortable',
-      borderRadius: 'lg',
+      cardStyle: 'elevated' as const,
+      borderRadius: 'xl' as const,
+      spacing: 'comfortable' as const,
     },
   },
-  navigation: {
-    tabs: [
-      { id: 'dashboard', label: 'Dashboard', icon: 'home', file: 'dashboard' },
-      { id: 'profile', label: 'Profile', icon: 'user', file: 'profile' },
-      { id: 'settings', label: 'Settings', icon: 'settings', file: 'settings' },
-    ],
-    modals: ['paywall', 'create-trip', 'add-expense'],
-  },
+
   features: {
-    analytics: { enabled: true, provider: 'posthog' },
+    analytics: {
+      enabled: true,
+      provider: 'posthog',
+      sessionRecording: false,
+      crashReporting: true,
+    },
     inAppPurchases: {
       enabled: true,
       tiers: [
         {
-          id: 'free',
           name: 'Free',
           productId: '',
-          description: 'Basic access',
-          type: 'subscription',
-          features: ['Basic features'],
+          price: 'Free',
+          features: ['Up to 2 trips', 'Basic itinerary'],
+          trialDays: 0,
         },
         {
-          id: 'pro',
           name: 'Pro',
-          productId: 'com.gastemplate.pro_monthly',
-          description: 'Full access to all features',
-          type: 'subscription',
-          price: '$9.99/mo',
-          features: ['All features', 'Priority support', 'Export data'],
+          productId: 'com.golftrip.pro.monthly',
+          price: '$4.99/mo',
+          features: ['Unlimited trips', 'Expense tracking', 'Score history', 'Trip recap'],
           trialDays: 7,
         },
-      ],
-      oneTimePurchases: [],
+      ] as IAPTier[],
+      oneTimePurchases: [
+        {
+          productId: 'com.golftrip.recap.unlock',
+          name: 'Trip Recap Unlock',
+          description: 'Unlock shareable trip recap card',
+          price: '$2.99',
+          type: 'consumable',
+        },
+      ] as IAPOneTimePurchase[],
       credits: {
         enabled: false,
-        currencyName: 'credits',
-        packs: [],
+        currencyName: 'credit',
+        currencyNamePlural: 'credits',
+        icon: '⭐',
+        packages: [],
+      } as CreditsConfig,
+      marketplace: {
+        enabled: false,
+        requiresApproval: false,
+        commissionPercent: 10,
       },
     },
-    darkMode: { enabled: true, default: 'system' },
-    helpSystem: true,
-    csvExport: true,
-    ads: { enabled: false, provider: 'admob' },
-    gamification: { enabled: false, elements: [] },
-    search: { enabled: false, entities: [] },
-    i18n: { enabled: false, locales: ['en'], defaultLocale: 'en' },
-    onboarding: { enabled: false, steps: [] },
-    pushNotifications: { enabled: true },
+    darkMode: {
+      enabled: true,
+      default: 'system' as const,
+    },
+    pushNotifications: {
+      enabled: true,
+      channels: ['general', 'trips', 'reminders'],
+    },
+    gamification: {
+      enabled: false,
+      elements: [] as string[],
+    },
+    search: {
+      enabled: false,
+      entities: [] as string[],
+    },
+    i18n: {
+      enabled: false,
+      locales: ['en'],
+      defaultLocale: 'en',
+    },
+    onboarding: {
+      enabled: false,
+      steps: [] as string[],
+    },
+    helpSystem: false,
+    ads: {
+      enabled: false,
+      provider: 'admob' as const,
+    },
+    csvExport: false,
+    offlineSync: {
+      enabled: false,
+      entities: [] as string[],
+      strategy: 'on_reconnect' as const,
+      encrypted: false,
+    },
+    compliance: {
+      gdprConsent: false,
+      ccpaNotice: false,
+      attDialog: true,
+      accountDeletionGracePeriod: {
+        days: 30,
+      },
+    },
     auth: {
       google: false,
-      apple: false,
+      apple: true,
       twitter: false,
       linkedin: false,
       microsoft: false,
-      biometric: { enabled: true, timeoutMinutes: 15 },
+      biometric: {
+        enabled: false,
+        timeoutMinutes: 15,
+      },
+      mfa: false,
+      anonymousAuth: {
+        enabled: false,
+        tables: [] as string[],
+      },
     },
+    telemetry: {
+      enabled: false,
+      debugOverlay: false,
+      ingestUrl: '',
+      flushIntervalMs: 30000,
+      maxQueueSize: 100,
+    },
+    showBuiltWithBadge: false,
   },
+
+  compliance: {
+    accountDeletionGracePeriod: {
+      days: 30,
+    },
+    immediateDeleteAllowed: false,
+  },
+
+  navigation: {
+    tabs: [
+      {
+        id: 'dashboard',
+        label: 'Trips',
+        icon: 'Home',
+        file: 'dashboard',
+      },
+      {
+        id: 'profile',
+        label: 'Profile',
+        icon: 'User',
+        file: 'profile',
+      },
+      {
+        id: 'settings',
+        label: 'Settings',
+        icon: 'Settings',
+        file: 'settings',
+      },
+    ],
+    modals: [] as string[],
+    hiddenScreens: [] as string[],
+  },
+
   backend: {
     supabase: {
       url: process.env.EXPO_PUBLIC_SUPABASE_URL ?? '',
       anonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
     },
+    posthog: {
+      apiKey: process.env.EXPO_PUBLIC_POSTHOG_API_KEY ?? '',
+      host: 'https://app.posthog.com',
+    },
+    revenuecat: {
+      iosKey: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? '',
+      androidKey: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY ?? '',
+    },
+    sentry: {
+      dsn: process.env.EXPO_PUBLIC_SENTRY_DSN ?? '',
+    },
+    telemetry: {
+      ingestSecret: process.env.EXPO_PUBLIC_TELEMETRY_SECRET ?? '',
+    },
+    stripe: {
+      publishableKey: process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '',
+    },
   },
-  compliance: {
-    accountDeletionGracePeriod: { days: 30 },
-    allowImmediateDeletion: false,
+
+  multiTenancy: {
+    enabled: false,
+    defaultRole: 'member',
   },
-  llm: {
-    provider: 'openai',
-    defaultChatModel: 'gpt-4o-mini',
-    defaultEmbedModel: 'text-embedding-3-small',
-    defaultTranscribeModel: 'whisper-1',
-    defaultMaxTokens: 1024,
-    budgetPeriod: 'day',
-    costScope: 'llm',
+
+  growth: {
+    referralCodeLength: 8,
+    experimentsEnabled: false,
+    defaultBackgroundSyncInterval: 60_000,
   },
-};
+
+  releaseChannels: {
+    storeUrl: {
+      ios: '',
+      android: '',
+    },
+  },
+
+  integrations: {
+    oauthProviders: [] as Array<{ provider: string }>,
+  },
+
+  media: {
+    defaultBucket: 'uploads',
+    maxImageEdge: 2048,
+    maxUploadBytes: 10 * 1024 * 1024,
+    allowedContentTypes: ['image/jpeg', 'image/png', 'image/webp'],
+    signedUrlTtlSeconds: 3600,
+  },
+
+  search: {
+    defaultLimit: 20,
+    maxLimit: 100,
+  },
+
+  realtime: {
+    presenceTimeoutMs: 5000,
+  },
+
+  ui: {
+    breakpoints: {
+      tablet: 768,
+      desktop: 1200,
+    },
+  },
+} as const satisfies Record<string, unknown>;
+
+export type AppConfig = typeof gasConfig;

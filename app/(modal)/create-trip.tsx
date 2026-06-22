@@ -58,7 +58,7 @@ export default function CreateTripModal() {
       router.push(`/(tabs)/trip/${trip.id}/itinerary` as never);
     } catch (err) {
       captureException(err as Error, { screen: 'create-trip', action: 'handleCreate' });
-      showToast({ message: "Something went wrong. Try again!", type: 'error' });
+      showToast('Something went wrong. Try again!', 'error');
     } finally {
       setSaving(false);
     }

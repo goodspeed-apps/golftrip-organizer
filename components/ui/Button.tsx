@@ -1,97 +1,101 @@
-import React from 'react';
-import {
-  TouchableOpacity,
-  Text,
-  ActivityIndicator,
-  StyleSheet,
-  type TouchableOpacityProps,
-  type TextStyle,
-  type ViewStyle,
-} from 'react-native';
+/**
+ * GAS Template, Button Component
+ *
+ * Themed button with variants, sizes, loading state, and disabled state.
+ * Variants: primary, secondary, outline, ghost, destructive.
+ * Sizes: sm, md, lg.
+ *
+ * Dependencies: useThemeColors (ThemeContext), gasConfig
+ */
+
+import { TouchableOpacity, Text, ActivityIndicator, type ViewStyle, type TextStyle } from 'react-native';
 import { useThemeColors } from '@/context/ThemeContext';
 
-export interface ButtonProps extends Omit<TouchableOpacityProps, 'style'> {
-  title: string;
-  onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+export interface ButtonProps {
+  label: string;
+  onPress: () => void | Promise<void>;
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive';
   size?: 'sm' | 'md' | 'lg';
-  loading?: boolean;
   disabled?: boolean;
+  loading?: boolean;
+  fullWidth?: boolean;
   style?: ViewStyle;
-  textStyle?: TextStyle;
+  testID?: string;
 }
 
 export function Button({
-  title,
+  label,
   onPress,
   variant = 'primary',
   size = 'md',
-  loading = false,
   disabled = false,
+  loading = false,
+  fullWidth = false,
   style,
-  textStyle,
-  ...rest
+  testID,
 }: ButtonProps) {
   const { colors } = useThemeColors();
 
-  const sizeStyles: Record<string, { paddingVertical: number; paddingHorizontal: number; fontSize: number; borderRadius: number }> = {
-    sm: { paddingVertical: 6, paddingHorizontal: 12, fontSize: 13, borderRadius: 8 },
-    md: { paddingVertical: 12, paddingHorizontal: 20, fontSize: 15, borderRadius: 12 },
-    lg: { paddingVertical: 16, paddingHorizontal: 28, fontSize: 17, borderRadius: 14 },
+  const sizeStyles: Record<string, { paddingVertical: number; paddingHorizontal: number; fontSize: number }> = {
+    sm: { paddingVertical: 6, paddingHorizontal: 12, fontSize: 13 },
+    md: { paddingVertical: 12, paddingHorizontal: 20, fontSize: 15 },
+    lg: { paddingVertical: 16, paddingHorizontal: 28, fontSize: 17 },
   };
+
+  const currentSize = sizeStyles[size] ?? sizeStyles.md;
 
   const variantContainerStyles: Record<string, ViewStyle> = {
     primary: { backgroundColor: colors.primary },
     secondary: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
     outline: { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.primary },
     ghost: { backgroundColor: 'transparent' },
-    danger: { backgroundColor: colors.error },
+    destructive: { backgroundColor: colors.error },
   };
 
-  const variantTextStyles: Record<string, TextStyle> = {
-    primary: { color: colors.textOnPrimary },
-    secondary: { color: colors.text },
-    outline: { color: colors.primary },
-    ghost: { color: colors.primary },
-    danger: { color: '#fff' },
+  const variantTextColors: Record<string, string> = {
+    primary: '#FFFFFF',
+    secondary: colors.text,
+    outline: colors.primary,
+    ghost: colors.primary,
+    destructive: '#FFFFFF',
   };
-
-  const { paddingVertical, paddingHorizontal, fontSize, borderRadius } = sizeStyles[size];
 
   const containerStyle: ViewStyle = {
-    paddingVertical,
-    paddingHorizontal,
-    borderRadius,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 10,
+    paddingVertical: currentSize.paddingVertical,
+    paddingHorizontal: currentSize.paddingHorizontal,
     opacity: disabled || loading ? 0.5 : 1,
-    ...variantContainerStyles[variant],
+    alignSelf: fullWidth ? 'stretch' : 'auto',
+    ...(variantContainerStyles[variant] ?? variantContainerStyles.primary),
     ...style,
   };
 
-  const labelStyle: TextStyle = {
-    fontSize,
+  const textStyle: TextStyle = {
+    fontSize: currentSize.fontSize,
     fontWeight: '600',
-    ...variantTextStyles[variant],
-    ...textStyle,
+    color: variantTextColors[variant] ?? variantTextColors.primary,
   };
 
   return (
     <TouchableOpacity
       onPress={onPress}
       disabled={disabled || loading}
-      activeOpacity={0.75}
       style={containerStyle}
-      {...rest}
+      testID={testID}
+      accessibilityRole="button"
+      accessibilityLabel={label}
     >
       {loading ? (
         <ActivityIndicator
           size="small"
-          color={variant === 'primary' || variant === 'danger' ? '#fff' : colors.primary}
+          color={variantTextColors[variant] ?? '#FFFFFF'}
+          style={{ marginRight: 8 }}
         />
-      ) : (
-        <Text style={labelStyle}>{title}</Text>
-      )}
+      ) : null}
+      <Text style={textStyle}>{label}</Text>
     </TouchableOpacity>
   );
 }
