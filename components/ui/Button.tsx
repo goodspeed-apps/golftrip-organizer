@@ -1,101 +1,99 @@
 /**
  * GAS Template, Button Component
  *
- * Themed button with variants, sizes, loading state, and disabled state.
- * Variants: primary, secondary, outline, ghost, destructive.
- * Sizes: sm, md, lg.
+ * A flexible, accessible button with variants and loading state.
+ * Supports 'primary', 'secondary', 'ghost', and 'danger' variants.
+ * Supports 'sm', 'md', and 'lg' sizes.
  *
- * Dependencies: useThemeColors (ThemeContext), gasConfig
+ * All colors come from useThemeColors(), never hardcoded.
  */
 
-import { TouchableOpacity, Text, ActivityIndicator, type ViewStyle, type TextStyle } from 'react-native';
+import { TouchableOpacity, Text, ActivityIndicator, StyleSheet, type ViewStyle, type TextStyle } from 'react-native';
 import { useThemeColors } from '@/context/ThemeContext';
 
 export interface ButtonProps {
-  label: string;
+  title: string;
   onPress: () => void | Promise<void>;
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   size?: 'sm' | 'md' | 'lg';
-  disabled?: boolean;
   loading?: boolean;
-  fullWidth?: boolean;
+  disabled?: boolean;
   style?: ViewStyle;
-  testID?: string;
+  textStyle?: TextStyle;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 }
 
 export function Button({
-  label,
+  title,
   onPress,
   variant = 'primary',
   size = 'md',
-  disabled = false,
   loading = false,
-  fullWidth = false,
+  disabled = false,
   style,
-  testID,
+  textStyle,
+  accessibilityLabel,
+  accessibilityHint,
 }: ButtonProps) {
   const { colors } = useThemeColors();
 
-  const sizeStyles: Record<string, { paddingVertical: number; paddingHorizontal: number; fontSize: number }> = {
-    sm: { paddingVertical: 6, paddingHorizontal: 12, fontSize: 13 },
-    md: { paddingVertical: 12, paddingHorizontal: 20, fontSize: 15 },
-    lg: { paddingVertical: 16, paddingHorizontal: 28, fontSize: 17 },
+  const sizeStyles = {
+    sm: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8 },
+    md: { paddingVertical: 12, paddingHorizontal: 20, borderRadius: 12 },
+    lg: { paddingVertical: 16, paddingHorizontal: 28, borderRadius: 14 },
   };
 
-  const currentSize = sizeStyles[size] ?? sizeStyles.md;
-
-  const variantContainerStyles: Record<string, ViewStyle> = {
-    primary: { backgroundColor: colors.primary },
-    secondary: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-    outline: { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.primary },
-    ghost: { backgroundColor: 'transparent' },
-    destructive: { backgroundColor: colors.error },
+  const textSizes = {
+    sm: { fontSize: 13 },
+    md: { fontSize: 15 },
+    lg: { fontSize: 17 },
   };
 
-  const variantTextColors: Record<string, string> = {
-    primary: '#FFFFFF',
-    secondary: colors.text,
-    outline: colors.primary,
-    ghost: colors.primary,
-    destructive: '#FFFFFF',
+  const variantStyles: Record<string, { bg: string; text: string; border?: string }> = {
+    primary: { bg: colors.primary, text: colors.textOnPrimary ?? '#fff' },
+    secondary: { bg: colors.surface, text: colors.text, border: colors.border },
+    ghost: { bg: 'transparent', text: colors.primary },
+    danger: { bg: colors.error, text: '#fff' },
   };
 
-  const containerStyle: ViewStyle = {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 10,
-    paddingVertical: currentSize.paddingVertical,
-    paddingHorizontal: currentSize.paddingHorizontal,
-    opacity: disabled || loading ? 0.5 : 1,
-    alignSelf: fullWidth ? 'stretch' : 'auto',
-    ...(variantContainerStyles[variant] ?? variantContainerStyles.primary),
-    ...style,
-  };
-
-  const textStyle: TextStyle = {
-    fontSize: currentSize.fontSize,
-    fontWeight: '600',
-    color: variantTextColors[variant] ?? variantTextColors.primary,
-  };
+  const v = variantStyles[variant] ?? variantStyles.primary;
 
   return (
     <TouchableOpacity
       onPress={onPress}
       disabled={disabled || loading}
-      style={containerStyle}
-      testID={testID}
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel ?? title}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{ disabled: disabled || loading, busy: loading }}
+      style={[
+        sizeStyles[size],
+        {
+          backgroundColor: v.bg,
+          borderWidth: v.border ? 1 : 0,
+          borderColor: v.border ?? 'transparent',
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: disabled ? 0.5 : 1,
+        },
+        style,
+      ]}
     >
       {loading ? (
-        <ActivityIndicator
-          size="small"
-          color={variantTextColors[variant] ?? '#FFFFFF'}
-          style={{ marginRight: 8 }}
-        />
-      ) : null}
-      <Text style={textStyle}>{label}</Text>
+        <ActivityIndicator size="small" color={v.text} />
+      ) : (
+        <Text
+          style={[
+            textSizes[size],
+            { color: v.text, fontWeight: '600' },
+            textStyle,
+          ]}
+        >
+          {title}
+        </Text>
+      )}
     </TouchableOpacity>
   );
 }

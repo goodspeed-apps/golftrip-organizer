@@ -1,148 +1,102 @@
+/**
+ * GAS Config Types
+ *
+ * Canonical TypeScript types for gasConfig.
+ * All fields used across the template must be declared here.
+ */
+
 export interface IAPTier {
   name: string;
   productId: string;
-  price: string;
-  features?: string[];
+  price: number;
+  features: string[];
   trialDays?: number;
 }
 
 export interface IAPOneTimePurchase {
-  productId: string;
+  id: string;
   name: string;
+  productId: string;
+  price: number;
   description?: string;
-  price: string;
-  type?: 'consumable' | 'non_consumable';
+}
+
+export interface CreditPack {
+  id: string;
+  credits: number;
+  bonusCredits?: number;
+  productId: string;
+  price: number;
+  label: string;
 }
 
 export interface CreditsConfig {
   enabled: boolean;
   currencyName: string;
-  currencyNamePlural: string;
-  icon?: string;
-  packages?: Array<{
-    productId: string;
-    credits: number;
-    price: string;
-    bonus?: number;
-  }>;
+  packs: CreditPack[];
 }
 
-export interface GasConfig {
+export interface InAppPurchasesConfig {
+  enabled: boolean;
+  tiers: IAPTier[];
+  oneTimePurchases?: IAPOneTimePurchase[];
+  credits?: CreditsConfig;
+}
+
+export interface MarketplaceConfig {
+  enabled: boolean;
+  requiresApproval: boolean;
+  commissionPercent: number;
+  platformFeePercent?: number;
+  listingCategories?: string[];
+  sellerPayoutMethod?: string;
+}
+
+export interface ComplianceConfig {
+  accountDeletionGracePeriod: {
+    days: number;
+  };
+  immediateDeleteAllowed: boolean;
+  allowImmediateDeletion?: boolean;
+}
+
+export interface GASConfig {
   app: {
     name: string;
     slug: string;
     scheme: string;
     version: string;
     minRuntimeVersion: string;
-    appStoreUrl?: string;
+    appStoreUrl: string;
+    description?: string;
   };
   design: {
-    colors: Record<string, string>;
-    mood: string;
+    colors: {
+      primary: string;
+      primaryDark: string;
+      secondary: string;
+      accent: string;
+      background: string;
+      backgroundDark: string;
+      surface: string;
+      surfaceDark: string;
+      text: string;
+      textDark: string;
+      textSecondary: string;
+      textSecondaryDark: string;
+      border: string;
+      borderDark: string;
+      success: string;
+      warning: string;
+      error: string;
+      [key: string]: string;
+    };
     typography: {
       displayFont?: string;
       bodyFont?: string;
       monoFont?: string;
+      headingWeight: '400' | '500' | '600' | '700' | '800' | '900';
     };
-    layout: {
-      cardStyle: 'flat' | 'elevated' | 'outlined' | 'filled';
-      borderRadius: string;
-      spacing: string;
-    };
-  };
-  features: {
-    analytics: {
-      enabled: boolean;
-      provider?: string;
-      sessionRecording?: boolean;
-      crashReporting?: boolean;
-    };
-    inAppPurchases: {
-      enabled: boolean;
-      tiers: IAPTier[];
-      oneTimePurchases?: IAPOneTimePurchase[];
-      credits?: CreditsConfig;
-      marketplace?: {
-        enabled: boolean;
-        requiresApproval?: boolean;
-        commissionPercent?: number;
-      };
-    };
-    darkMode: {
-      enabled: boolean;
-      default?: 'light' | 'dark' | 'system';
-    };
-    pushNotifications: {
-      enabled: boolean;
-      channels: string[];
-    };
-    gamification: {
-      enabled: boolean;
-      elements: string[];
-    };
-    search: {
-      enabled: boolean;
-      entities: string[];
-    };
-    i18n: {
-      enabled: boolean;
-      locales: string[];
-      defaultLocale: string;
-    };
-    onboarding: {
-      enabled: boolean;
-      steps: string[];
-    };
-    helpSystem: boolean;
-    ads: {
-      enabled: boolean;
-      provider?: string;
-    };
-    csvExport: boolean;
-    offlineSync?: {
-      enabled: boolean;
-      entities?: string[];
-      strategy?: string;
-      encrypted?: boolean;
-    };
-    compliance: {
-      gdprConsent: boolean;
-      ccpaNotice: boolean;
-      attDialog: boolean;
-      accountDeletionGracePeriod?: {
-        days: number;
-      };
-    };
-    auth: {
-      google?: boolean;
-      apple?: boolean;
-      twitter?: boolean;
-      linkedin?: boolean;
-      microsoft?: boolean;
-      biometric: {
-        enabled: boolean;
-        timeoutMinutes: number;
-      };
-      mfa?: boolean;
-      anonymousAuth?: {
-        enabled: boolean;
-        tables: string[];
-      };
-    };
-    telemetry?: {
-      enabled: boolean;
-      debugOverlay?: boolean;
-      ingestUrl?: string;
-      flushIntervalMs?: number;
-      maxQueueSize?: number;
-    };
-    showBuiltWithBadge?: boolean;
-  };
-  compliance: {
-    accountDeletionGracePeriod: {
-      days: number;
-    };
-    immediateDeleteAllowed?: boolean;
   };
   navigation: {
     tabs: Array<{
@@ -152,67 +106,53 @@ export interface GasConfig {
       file: string;
     }>;
     modals: string[];
-    hiddenScreens: string[];
   };
+  features: {
+    analytics: { enabled: boolean; provider?: string };
+    inAppPurchases: InAppPurchasesConfig;
+    darkMode: { enabled: boolean };
+    gamification: { enabled: boolean; elements: string[] };
+    search: { enabled: boolean; entities: string[] };
+    i18n: { enabled: boolean; locales: string[]; defaultLocale: string };
+    onboarding: { enabled: boolean; steps: string[] };
+    auth: {
+      google: boolean;
+      apple: boolean;
+      twitter: boolean;
+      linkedin: boolean;
+      microsoft: boolean;
+      biometric: { enabled: boolean; timeoutMinutes: number };
+      mfa?: boolean;
+    };
+    pushNotifications: { enabled: boolean };
+    helpSystem: boolean;
+    csvExport: boolean;
+    ads: { enabled: boolean; provider: string };
+    telemetry?: { enabled: boolean; debugOverlay?: boolean };
+    marketplace?: MarketplaceConfig;
+    anonymousAuth?: { enabled: boolean; tables: string[] };
+  };
+  compliance: ComplianceConfig;
   backend: {
     supabase: {
       url: string;
       anonKey: string;
     };
-    posthog: {
-      apiKey: string;
-      host: string;
-    };
-    revenuecat: {
-      iosKey: string;
-      androidKey: string;
-    };
-    sentry?: {
-      dsn: string;
-    };
-    telemetry?: {
-      ingestSecret: string;
-    };
-    stripe?: {
-      publishableKey: string;
-    };
-  };
-  multiTenancy: {
-    enabled: boolean;
-    defaultRole?: string;
-  };
-  growth: {
-    referralCodeLength: number;
-    experimentsEnabled: boolean;
-    defaultBackgroundSyncInterval: number;
-  };
-  releaseChannels?: {
-    storeUrl?: {
-      ios?: string;
-      android?: string;
-    };
-  };
-  integrations: {
-    oauthProviders: Array<{ provider: string }>;
   };
   media: {
-    defaultBucket: string;
     maxImageEdge: number;
     maxUploadBytes: number;
     allowedContentTypes: string[];
+    defaultBucket: string;
     signedUrlTtlSeconds: number;
   };
-  search: {
-    defaultLimit: number;
-    maxLimit: number;
-  };
-  realtime?: {
-    presenceTimeoutMs?: number;
-  };
-  ui: {
-    breakpoints: {
-      tablet: number;
-      desktop: number;
-    };
+  llm: {
+    provider: string;
+    defaultChatModel?: string;
+    defaultEmbedModel?: string;
+    defaultTranscribeModel?: string;
+    defaultMaxTokens?: number;
+    budgetPeriod?: string;
+    costScope?: string;
   };
 }

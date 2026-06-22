@@ -60,6 +60,8 @@ export default function DataRightsScreen() {
     }
   };
 
+  const allowImmediateDeletion = (gasConfig.compliance as { allowImmediateDeletion?: boolean }).allowImmediateDeletion ?? false;
+
   const onDelete = async () => {
     Alert.alert(
       'Delete account',
@@ -151,7 +153,7 @@ export default function DataRightsScreen() {
             body={`Schedule deletion. You'll have ${gasConfig.compliance.accountDeletionGracePeriod.days} days to change your mind.`}
             colors={colors}
           >
-            {gasConfig.compliance.allowImmediateDeletion ? (
+            {allowImmediateDeletion ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
                 <Switch value={immediate} onValueChange={setImmediate} />
                 <Text style={{ marginLeft: 8, color: colors.text }}>Delete immediately (no grace period)</Text>

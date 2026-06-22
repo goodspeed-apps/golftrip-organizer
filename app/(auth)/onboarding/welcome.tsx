@@ -23,7 +23,7 @@ import { gasConfig } from '../../../gas.config';
 
 const ONBOARDING_STEPS = gasConfig.features.onboarding.steps;
 const APP_NAME = gasConfig.app.name;
-const APP_DESCRIPTION = gasConfig.app.description;
+const APP_DESCRIPTION = (gasConfig.app as { description?: string }).description ?? '';
 
 /**
  * Step progress dots, shows current position in the onboarding flow.
