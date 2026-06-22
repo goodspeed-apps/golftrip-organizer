@@ -1,99 +1,104 @@
 /**
  * GAS Template, Button Component
  *
- * A flexible, accessible button with variants and loading state.
- * Supports 'primary', 'secondary', 'ghost', and 'danger' variants.
- * Supports 'sm', 'md', and 'lg' sizes.
+ * Themed button with variants, sizes, loading state, and full-width option.
+ * Config-driven border radius from gasConfig.design.layout.borderRadius.
  *
- * All colors come from useThemeColors(), never hardcoded.
+ * Dependencies: useThemeColors (ThemeContext), gasConfig
  */
 
-import { TouchableOpacity, Text, ActivityIndicator, StyleSheet, type ViewStyle, type TextStyle } from 'react-native';
+import { ActivityIndicator, Pressable, Text, type ViewStyle, type TextStyle } from 'react-native';
 import { useThemeColors } from '@/context/ThemeContext';
+import { gasConfig } from '../../gas.config';
+import { containerRadius } from '../../lib/design-tokens';
 
 export interface ButtonProps {
-  title: string;
+  label: string;
   onPress: () => void | Promise<void>;
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive';
   size?: 'sm' | 'md' | 'lg';
-  loading?: boolean;
   disabled?: boolean;
+  loading?: boolean;
+  fullWidth?: boolean;
   style?: ViewStyle;
-  textStyle?: TextStyle;
-  accessibilityLabel?: string;
-  accessibilityHint?: string;
+  testID?: string;
 }
 
 export function Button({
-  title,
+  label,
   onPress,
   variant = 'primary',
   size = 'md',
-  loading = false,
   disabled = false,
+  loading = false,
+  fullWidth = false,
   style,
-  textStyle,
-  accessibilityLabel,
-  accessibilityHint,
+  testID,
 }: ButtonProps) {
   const { colors } = useThemeColors();
+  const r = containerRadius();
 
-  const sizeStyles = {
-    sm: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8 },
-    md: { paddingVertical: 12, paddingHorizontal: 20, borderRadius: 12 },
-    lg: { paddingVertical: 16, paddingHorizontal: 28, borderRadius: 14 },
+  const sizeStyles: Record<string, { paddingVertical: number; paddingHorizontal: number; fontSize: number; minHeight: number }> = {
+    sm: { paddingVertical: 8, paddingHorizontal: 14, fontSize: 13, minHeight: 34 },
+    md: { paddingVertical: 12, paddingHorizontal: 20, fontSize: 15, minHeight: 44 },
+    lg: { paddingVertical: 16, paddingHorizontal: 28, fontSize: 17, minHeight: 52 },
   };
 
-  const textSizes = {
-    sm: { fontSize: 13 },
-    md: { fontSize: 15 },
-    lg: { fontSize: 17 },
+  const s = sizeStyles[size] ?? sizeStyles.md;
+
+  const variantContainerStyle: Record<string, ViewStyle> = {
+    primary: { backgroundColor: colors.primary },
+    secondary: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+    outline: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: colors.primary },
+    ghost: { backgroundColor: 'transparent' },
+    destructive: { backgroundColor: colors.error },
   };
 
-  const variantStyles: Record<string, { bg: string; text: string; border?: string }> = {
-    primary: { bg: colors.primary, text: colors.textOnPrimary ?? '#fff' },
-    secondary: { bg: colors.surface, text: colors.text, border: colors.border },
-    ghost: { bg: 'transparent', text: colors.primary },
-    danger: { bg: colors.error, text: '#fff' },
+  const variantTextColor: Record<string, string> = {
+    primary: '#FFFFFF',
+    secondary: colors.text,
+    outline: colors.primary,
+    ghost: colors.primary,
+    destructive: '#FFFFFF',
   };
 
-  const v = variantStyles[variant] ?? variantStyles.primary;
+  const containerStyle: ViewStyle = {
+    borderRadius: r,
+    paddingVertical: s.paddingVertical,
+    paddingHorizontal: s.paddingHorizontal,
+    minHeight: s.minHeight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    opacity: disabled || loading ? 0.5 : 1,
+    alignSelf: fullWidth ? 'stretch' : 'auto',
+    ...(variantContainerStyle[variant] ?? variantContainerStyle.primary),
+    ...style,
+  };
+
+  const textStyle: TextStyle = {
+    fontSize: s.fontSize,
+    fontWeight: '600',
+    color: variantTextColor[variant] ?? '#FFFFFF',
+  };
+
+  const spinnerColor = variantTextColor[variant] ?? '#FFFFFF';
 
   return (
-    <TouchableOpacity
+    <Pressable
       onPress={onPress}
       disabled={disabled || loading}
+      style={({ pressed }) => [containerStyle, pressed && !disabled && !loading && { opacity: 0.8 }]}
+      accessibilityLabel={label}
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel ?? title}
-      accessibilityHint={accessibilityHint}
-      accessibilityState={{ disabled: disabled || loading, busy: loading }}
-      style={[
-        sizeStyles[size],
-        {
-          backgroundColor: v.bg,
-          borderWidth: v.border ? 1 : 0,
-          borderColor: v.border ?? 'transparent',
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          opacity: disabled ? 0.5 : 1,
-        },
-        style,
-      ]}
+      accessibilityState={{ disabled: disabled || loading }}
+      testID={testID}
     >
       {loading ? (
-        <ActivityIndicator size="small" color={v.text} />
-      ) : (
-        <Text
-          style={[
-            textSizes[size],
-            { color: v.text, fontWeight: '600' },
-            textStyle,
-          ]}
-        >
-          {title}
-        </Text>
-      )}
-    </TouchableOpacity>
+        <ActivityIndicator size="small" color={spinnerColor} />
+      ) : null}
+      <Text style={textStyle}>{label}</Text>
+    </Pressable>
   );
 }

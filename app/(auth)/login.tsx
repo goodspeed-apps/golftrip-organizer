@@ -95,7 +95,7 @@ export default function LoginScreen() {
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
 
-// Capture mount-time once so re-renders don't reset the screen-load baseline.
+  // Capture mount-time once so re-renders don't reset the screen-load baseline.
   const screenStartRef = useRef(Date.now());
   useEffect(() => {
     track('login_screen_viewed');
@@ -185,7 +185,7 @@ export default function LoginScreen() {
       }
       await supabase.auth.exchangeCodeForSession(result.url);
     } else {
-      // User cancelled, dismissed, or the flow errored before completing, 
+      // User cancelled, dismissed, or the flow errored before completing,
       // drop the stored state so a stale value can't be reused.
       await clearOAuthState();
     }
@@ -193,7 +193,7 @@ export default function LoginScreen() {
     setOAuthProvider(null);
   }
 
-async function handleAppleLogin() {
+  async function handleAppleLogin() {
     if (isWeb) return;
     try {
       setLoading(true);
@@ -202,280 +202,302 @@ async function handleAppleLogin() {
     } catch (e: unknown) {
       // Expo AppleAuthentication throws a CodedError whose `code` is
       // 'ERR_REQUEST_CANCELED' when the user taps Cancel in the native Apple
-      // dialog (underlying iOS ASAuthorizationError.canceled, code 1001).
-      // Cancelling is normal, return silently, never show an error alert.
-      // NB: the cancel sentinel lives on `.code`, NOT `.message` (message is
-      // the human-readable "The user canceled the authorization attempt.").
-      const code = (e as { code?: string })?.code;
-      if (code === 'ERR_REQUEST_CANCELED') return;
-      Alert.alert('Error', friendlyAuthError(e));
+      // dialog
+      const err = e as { code?: string; message?: string };
+      if (err?.code !== 'ERR_REQUEST_CANCELED') {
+        Alert.alert('Apple Sign In Failed', err?.message ?? 'Please try again.');
+      }
     } finally {
       setLoading(false);
       setOAuthProvider(null);
     }
   }
 
-  // --- Shared styles ---
-  const inputStyle = {
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    color: colors.text,
-  };
+  // Derive boolean flags from config for conditional rendering.
+  // Cast to boolean explicitly to avoid literal-type comparison issues.
+  const showGoogle = Boolean(AUTH.google) && !!process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+  const showApple = Boolean(AUTH.apple) && appleAvailable;
+  const showTwitter = Boolean(AUTH.twitter);
+  const showLinkedIn = Boolean(AUTH.linkedin);
+  const showMicrosoft = Boolean(AUTH.microsoft);
 
-  const oauthBtnStyle = {
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    gap: 10,
-  };
-
-  // Determine if any OAuth buttons will be shown.
-  const showGoogle = AUTH.google;
-  const showApple = !isWeb && Platform.OS === 'ios' && AUTH.apple && appleAvailable;
-  const showTwitter = AUTH.twitter;
-  const showLinkedIn = AUTH.linkedin === true;
-  const showMicrosoft = AUTH.microsoft === true;
-  const hasOAuth = showGoogle || showApple || showTwitter || showLinkedIn || showMicrosoft;
+  const hasOAuthProviders = showGoogle || showApple || showTwitter || showLinkedIn || showMicrosoft;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
-        // iOS measures keyboard against the screen origin, so a SafeAreaView
-        // top inset must be added back so the form doesn't slide too far up.
-        // Android handles this via the adjustResize window flag, no offset.
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingBottom: 40 }}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* Logo header */}
-        <View style={{ alignItems: 'center', paddingTop: 48, paddingBottom: 40, gap: 16 }}>
-          <AppLogo size={72} />
-          <View style={{ alignItems: 'center', gap: 4 }}>
-            <Text style={{ fontSize: 28, fontWeight: '800', color: colors.text, letterSpacing: -0.5 }}>
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, padding: 24 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Logo */}
+          <View style={{ alignItems: 'center', marginTop: 32, marginBottom: 32 }}>
+            <AppLogo size={64} />
+            <Text style={{ fontSize: 26, fontWeight: '800', color: colors.text, marginTop: 16 }}>
               {APP_NAME}
             </Text>
-            <Text style={{ fontSize: 15, color: colors.textSecondary }}>Welcome back</Text>
+            <Text style={{ fontSize: 15, color: colors.textSecondary, marginTop: 6 }}>
+              Sign in to continue
+            </Text>
           </View>
-        </View>
 
-        {/* Email form */}
-        <View style={{ gap: 12, marginBottom: 24 }}>
-          <TextInput
-            ref={emailRef}
-            style={inputStyle}
-            placeholder="Email"
-            placeholderTextColor={colors.textSecondary}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            textContentType="emailAddress"
-            autoCapitalize="none"
-            autoComplete="email"
-            autoCorrect={false}
-            accessibilityLabel="Email address"
-            returnKeyType="next"
-            onSubmitEditing={() => passwordRef.current?.focus()}
-            blurOnSubmit={false}
-          />
-          <PasswordInput
-            ref={passwordRef}
-            placeholder="Password"
-            value={password}
-            onChangeText={setPassword}
-            textContentType="password"
-            autoComplete="current-password"
-            accessibilityLabel="Password"
-            returnKeyType="go"
-            onSubmitEditing={handleEmailLogin}
-          />
+          {/* OAuth Buttons */}
+          {hasOAuthProviders && (
+            <View style={{ gap: 10, marginBottom: 20 }}>
+              {showGoogle && (
+                <TouchableOpacity
+                  onPress={() => handleOAuthLogin('google')}
+                  disabled={loading}
+                  style={{
+                    height: 48,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    backgroundColor: colors.surface,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 10,
+                    opacity: loading ? 0.7 : 1,
+                  }}
+                  accessibilityLabel="Sign in with Google"
+                >
+                  {oauthProvider === 'google' ? (
+                    <ActivityIndicator size="small" color={colors.text} />
+                  ) : (
+                    <ProviderIcon provider="google" size={18} color={colors.text} />
+                  )}
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>
+                    Continue with Google
+                  </Text>
+                </TouchableOpacity>
+              )}
 
-          {/* Forgot password */}
-          <View style={{ alignItems: 'flex-end' }}>
-            <Link href="/(auth)/reset-password" asChild>
-              <TouchableOpacity
-                accessibilityRole="button"
-                accessibilityLabel="Forgot password"
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>
-                  Forgot password?
+              {showApple && (
+                <TouchableOpacity
+                  onPress={handleAppleLogin}
+                  disabled={loading}
+                  style={{
+                    height: 48,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    backgroundColor: colors.surface,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 10,
+                    opacity: loading ? 0.7 : 1,
+                  }}
+                  accessibilityLabel="Sign in with Apple"
+                >
+                  {oauthProvider === 'apple' ? (
+                    <ActivityIndicator size="small" color={colors.text} />
+                  ) : (
+                    <ProviderIcon provider="apple" size={18} color={colors.text} />
+                  )}
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>
+                    Continue with Apple
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {showTwitter && (
+                <TouchableOpacity
+                  onPress={() => handleOAuthLogin('twitter')}
+                  disabled={loading}
+                  style={{
+                    height: 48,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    backgroundColor: colors.surface,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 10,
+                    opacity: loading ? 0.7 : 1,
+                  }}
+                  accessibilityLabel="Sign in with Twitter"
+                >
+                  {oauthProvider === 'twitter' ? (
+                    <ActivityIndicator size="small" color={colors.text} />
+                  ) : (
+                    <ProviderIcon provider="x" size={18} color={colors.text} />
+                  )}
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>
+                    Continue with Twitter
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {showLinkedIn && (
+                <TouchableOpacity
+                  onPress={() => handleOAuthLogin('linkedin_oidc')}
+                  disabled={loading}
+                  style={{
+                    height: 48,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    backgroundColor: colors.surface,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 10,
+                    opacity: loading ? 0.7 : 1,
+                  }}
+                  accessibilityLabel="Sign in with LinkedIn"
+                >
+                  {oauthProvider === 'linkedin_oidc' ? (
+                    <ActivityIndicator size="small" color={colors.text} />
+                  ) : (
+                    <ProviderIcon provider="linkedin" size={18} color={colors.text} />
+                  )}
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>
+                    Continue with LinkedIn
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {showMicrosoft && (
+                <TouchableOpacity
+                  onPress={() => handleOAuthLogin('azure')}
+                  disabled={loading}
+                  style={{
+                    height: 48,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    backgroundColor: colors.surface,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 10,
+                    opacity: loading ? 0.7 : 1,
+                  }}
+                  accessibilityLabel="Sign in with Microsoft"
+                >
+                  {oauthProvider === 'azure' ? (
+                    <ActivityIndicator size="small" color={colors.text} />
+                  ) : (
+                    <ProviderIcon provider="microsoft" size={18} color={colors.text} />
+                  )}
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>
+                    Continue with Microsoft
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Divider */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 4 }}>
+                <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
+                <Text style={{ color: colors.textSecondary, fontSize: 13 }}>or</Text>
+                <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
+              </View>
+            </View>
+          )}
+
+          {/* Email/Password Form */}
+          <View style={{ gap: 12 }}>
+            <TextInput
+              ref={emailRef}
+              style={{
+                height: 48,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: colors.border,
+                backgroundColor: colors.surface,
+                paddingHorizontal: 16,
+                fontSize: 16,
+                color: colors.text,
+              }}
+              placeholder="Email"
+              placeholderTextColor={colors.textSecondary}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="next"
+              onSubmitEditing={() => passwordRef.current?.focus()}
+            />
+
+            <PasswordInput
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Password"
+              returnKeyType="done"
+              onSubmitEditing={handleEmailLogin}
+              ref={passwordRef}
+            />
+
+            {emailUnconfirmed && (
+              <View style={{
+                backgroundColor: colors.warning + '20',
+                borderRadius: 10,
+                padding: 12,
+                borderWidth: 1,
+                borderColor: colors.warning + '40',
+              }}>
+                <Text style={{ color: colors.text, fontSize: 13, marginBottom: 8 }}>
+                  Please verify your email before signing in.
                 </Text>
+                <TouchableOpacity
+                  onPress={handleResendVerification}
+                  disabled={resending}
+                  accessibilityLabel="Resend verification email"
+                >
+                  <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>
+                    {resending ? 'Sending...' : 'Resend verification email'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            <TouchableOpacity
+              onPress={handleEmailLogin}
+              disabled={loading || !email || !password}
+              style={{
+                height: 48,
+                borderRadius: 12,
+                backgroundColor: colors.primary,
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: loading || !email || !password ? 0.6 : 1,
+              }}
+              accessibilityLabel="Sign in"
+            >
+              {loading && oauthProvider === null ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>Sign In</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Forgot Password */}
+          <View style={{ alignItems: 'center', marginTop: 16 }}>
+            <Link href="/(auth)/forgot-password" asChild>
+              <TouchableOpacity accessibilityLabel="Forgot password">
+                <Text style={{ color: colors.primary, fontSize: 14 }}>Forgot password?</Text>
               </TouchableOpacity>
             </Link>
           </View>
 
-          {/* Resend verification, only after an "email not confirmed" failure */}
-          {emailUnconfirmed && (
-            <TouchableOpacity
-              onPress={handleResendVerification}
-              disabled={resending}
-              accessibilityRole="button"
-              accessibilityLabel="Resend verification email"
-              accessibilityState={{ disabled: resending, busy: resending }}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              style={{ alignItems: 'center' }}
-            >
-              {resending ? (
-                <ActivityIndicator color={colors.primary} />
-              ) : (
-                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>
-                  Resend verification email
-                </Text>
-              )}
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity
-            style={{
-              height: 48,
-              borderRadius: 12,
-              backgroundColor: email && password ? colors.primary : colors.primary + '66',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            onPress={handleEmailLogin}
-            disabled={loading || !email || !password}
-            accessibilityRole="button"
-            accessibilityLabel="Sign in"
-            accessibilityState={{ disabled: loading || !email || !password, busy: loading }}
-          >
-            {loading ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text style={{ fontSize: 16, fontWeight: '600', color: 'white' }}>Sign In</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {/* OAuth divider, only shown if OAuth buttons are present */}
-        {hasOAuth && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-            <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
-            <Text style={{ fontSize: 13, color: colors.textSecondary }}>or continue with</Text>
-            <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
+          {/* Sign up link */}
+          <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 24 }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 14 }}>Don't have an account? </Text>
+            <Link href="/(auth)/signup" asChild>
+              <TouchableOpacity accessibilityLabel="Create account">
+                <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '600' }}>Sign up</Text>
+              </TouchableOpacity>
+            </Link>
           </View>
-        )}
-
-        {/* OAuth buttons, conditional on config */}
-        {hasOAuth && (
-          <View style={{ gap: 12, marginBottom: 32 }}>
-            {showGoogle && (
-              <TouchableOpacity
-                style={oauthBtnStyle}
-                onPress={() => handleOAuthLogin('google')}
-                disabled={loading}
-                accessibilityRole="button"
-                accessibilityLabel="Sign in with Google"
-                accessibilityState={{ disabled: loading, busy: oauthProvider === 'google' }}
-              >
-                {oauthProvider === 'google' ? (
-                  <ActivityIndicator size="small" color={colors.text} />
-                ) : (
-                  <ProviderIcon provider="google" size={18} />
-                )}
-                <Text style={{ fontSize: 15, fontWeight: '500', color: colors.text }}>Continue with Google</Text>
-              </TouchableOpacity>
-            )}
-
-            {showTwitter && (
-              <TouchableOpacity
-                style={oauthBtnStyle}
-                onPress={() => handleOAuthLogin('twitter')}
-                disabled={loading}
-                accessibilityRole="button"
-                accessibilityLabel="Sign in with Twitter"
-                accessibilityState={{ disabled: loading, busy: oauthProvider === 'twitter' }}
-              >
-                {oauthProvider === 'twitter' ? (
-                  <ActivityIndicator size="small" color={colors.text} />
-                ) : (
-                  <ProviderIcon provider="x" size={16} color={colors.text} />
-                )}
-                <Text style={{ fontSize: 15, fontWeight: '500', color: colors.text }}>Continue with X</Text>
-              </TouchableOpacity>
-            )}
-
-            {showLinkedIn && (
-              <TouchableOpacity
-                style={oauthBtnStyle}
-                onPress={() => handleOAuthLogin('linkedin_oidc')}
-                disabled={loading}
-                accessibilityRole="button"
-                accessibilityLabel="Sign in with LinkedIn"
-                accessibilityState={{ disabled: loading, busy: oauthProvider === 'linkedin_oidc' }}
-              >
-                {oauthProvider === 'linkedin_oidc' ? (
-                  <ActivityIndicator size="small" color={colors.text} />
-                ) : (
-                  <ProviderIcon provider="linkedin" size={18} />
-                )}
-                <Text style={{ fontSize: 15, fontWeight: '500', color: colors.text }}>Continue with LinkedIn</Text>
-              </TouchableOpacity>
-            )}
-
-            {showMicrosoft && (
-              <TouchableOpacity
-                style={oauthBtnStyle}
-                onPress={() => handleOAuthLogin('azure')}
-                disabled={loading}
-                accessibilityRole="button"
-                accessibilityLabel="Sign in with Microsoft"
-                accessibilityState={{ disabled: loading, busy: oauthProvider === 'azure' }}
-              >
-                {oauthProvider === 'azure' ? (
-                  <ActivityIndicator size="small" color={colors.text} />
-                ) : (
-                  <ProviderIcon provider="microsoft" size={18} />
-                )}
-                <Text style={{ fontSize: 15, fontWeight: '500', color: colors.text }}>Continue with Microsoft</Text>
-              </TouchableOpacity>
-            )}
-
-            {showApple && (
-              <TouchableOpacity
-                style={oauthBtnStyle}
-                onPress={handleAppleLogin}
-                disabled={loading}
-                accessibilityRole="button"
-                accessibilityLabel="Sign in with Apple"
-                accessibilityState={{ disabled: loading, busy: oauthProvider === 'apple' }}
-              >
-                {oauthProvider === 'apple' ? (
-                  <ActivityIndicator size="small" color={colors.text} />
-                ) : (
-                  <ProviderIcon provider="apple" size={18} color={colors.text} />
-                )}
-                <Text style={{ fontSize: 15, fontWeight: '500', color: colors.text }}>Continue with Apple</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-
-        {/* Switch to signup */}
-        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 4 }}>
-          <Text style={{ fontSize: 14, color: colors.textSecondary }}>Don't have an account?</Text>
-          <Link href="/(auth)/signup" asChild>
-            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Go to sign up">
-              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>Sign up</Text>
-            </TouchableOpacity>
-          </Link>
-        </View>
-      </ScrollView>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

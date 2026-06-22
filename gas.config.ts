@@ -1,4 +1,4 @@
-import type { GASConfig } from './lib/gas-config-types';
+import type { GasConfig } from './lib/gas-config-types';
 
 export const gasConfig = {
   app: {
@@ -10,45 +10,51 @@ export const gasConfig = {
     appStoreUrl: '',
     description: 'Plan, coordinate, and track your golf trips with friends.',
   },
+
   design: {
     colors: {
       primary: '#2D6A4F',
       primaryDark: '#1B4332',
       secondary: '#52B788',
       accent: '#95D5B2',
-      background: '#F8F9FA',
-      backgroundDark: '#1A1A2E',
-      surface: '#FFFFFF',
-      surfaceDark: '#16213E',
-      text: '#1A1A2E',
-      textDark: '#E8E8F0',
-      textSecondary: '#6C757D',
-      textSecondaryDark: '#9999AA',
-      border: '#DEE2E6',
-      borderDark: '#2A2A4A',
+      background: '#FFFFFF',
+      backgroundDark: '#0D1B14',
+      surface: '#F8FAF9',
+      surfaceDark: '#1A2E24',
+      surfaceElevated: '#F0F5F2',
+      text: '#1A2E24',
+      textDark: '#E8F5EE',
+      textSecondary: '#4A7C63',
+      textSecondaryDark: '#8BC4A8',
+      textOnPrimary: '#FFFFFF',
+      border: '#C8E6D4',
+      borderDark: '#2D4F3C',
       success: '#40916C',
       warning: '#F4A261',
       error: '#E63946',
+      info: '#4361EE',
     },
+    mood: 'calm',
     typography: {
       displayFont: 'PlusJakartaSans',
       bodyFont: 'Inter',
-      monoFont: 'system',
-      headingWeight: '700' as const,
+      monoFont: 'SpaceMono',
+    },
+    layout: {
+      cardStyle: 'elevated' as const,
+      borderRadius: 'lg' as const,
+      spacing: 'comfortable' as const,
     },
   },
-  navigation: {
-    tabs: [
-      { id: 'dashboard', label: 'Trips', icon: 'map', file: 'dashboard' },
-      { id: 'profile', label: 'Profile', icon: 'user', file: 'profile' },
-      { id: 'settings', label: 'Settings', icon: 'settings', file: 'settings' },
-    ],
-    modals: ['paywall', 'create-trip', 'add-tee-time', 'email-import', 'score-entry', 'trip-recap', 'add-expense', 'settlements'],
-  },
+
   features: {
-    analytics: { enabled: false as const },
+    analytics: {
+      enabled: false,
+      crashReporting: false,
+      sessionRecording: false,
+    },
     inAppPurchases: {
-      enabled: false as const,
+      enabled: false,
       tiers: [
         {
           name: 'Free',
@@ -61,7 +67,7 @@ export const gasConfig = {
           name: 'Pro',
           productId: 'com.golftrip.pro.monthly',
           price: 4.99,
-          features: ['Unlimited trips', 'Email import', 'Trip recap', 'CSV export'],
+          features: ['Unlimited trips', 'Expense splitting', 'Score tracking', 'Email import'],
           trialDays: 7,
         },
       ],
@@ -72,11 +78,13 @@ export const gasConfig = {
           productId: 'com.golftrip.recap.once',
           price: 2.99,
           description: 'Shareable recap card for one trip',
+          type: 'consumable' as const,
         },
       ],
       credits: {
-        enabled: false as const,
+        enabled: false,
         currencyName: 'credits',
+        currencyNamePlural: 'credits',
         packs: [
           {
             id: 'credits_100',
@@ -92,94 +100,164 @@ export const gasConfig = {
             bonusCredits: 50,
             productId: 'com.golftrip.credits.500',
             price: 3.99,
-            label: '500 Credits + 50 Bonus',
+            label: '500 Credits',
           },
         ],
       },
-    },
-    darkMode: { enabled: true as const },
-    gamification: {
-      enabled: false as const,
-      elements: [] as string[],
-    },
-    search: {
-      enabled: false as const,
-      entities: [] as string[],
-    },
-    i18n: {
-      enabled: false as const,
-      locales: ['en'],
-      defaultLocale: 'en',
-    },
-    onboarding: {
-      enabled: true as const,
-      steps: ['welcome'],
+      marketplace: {
+        enabled: false,
+        requiresApproval: false,
+        commissionPercent: 10,
+      },
     },
     auth: {
-      google: false as const,
-      apple: false as const,
-      twitter: false as const,
-      linkedin: false as const,
-      microsoft: false as const,
+      google: false,
+      apple: false,
+      twitter: false,
+      linkedin: false,
+      microsoft: false,
+      mfa: false,
       biometric: {
-        enabled: false as const,
-        timeoutMinutes: 5,
+        enabled: false,
+        timeoutMinutes: 15,
       },
-      mfa: false as const,
+    },
+    darkMode: {
+      enabled: true,
+      default: 'system' as const,
     },
     pushNotifications: {
-      enabled: false as const,
+      enabled: true,
+      channels: ['general', 'trips', 'reminders'],
     },
-    helpSystem: false as const,
-    csvExport: false as const,
+    helpSystem: false,
+    gamification: {
+      enabled: false,
+      elements: [],
+    },
+    search: {
+      enabled: false,
+      entities: [],
+    },
+    i18n: {
+      enabled: false,
+      defaultLocale: 'en',
+      locales: ['en'],
+    },
+    onboarding: {
+      enabled: true,
+      steps: ['welcome'],
+    },
+    csvExport: false,
+    offlineSync: {
+      enabled: false,
+      entities: [],
+      strategy: 'on_reconnect' as const,
+      encrypted: false,
+    },
     ads: {
-      enabled: false as const,
+      enabled: false,
       provider: 'admob' as const,
+      bannerAdUnitId: '',
+      interstitialAdUnitId: '',
+    },
+    compliance: {
+      gdprConsent: false,
+      ccpaNotice: false,
+      attDialog: false,
     },
     telemetry: {
-      enabled: false as const,
-      debugOverlay: false as const,
+      enabled: false,
+      ingestUrl: '',
+      flushIntervalMs: 30000,
+      maxQueueSize: 100,
+      debugOverlay: false,
     },
-    marketplace: {
-      enabled: false as const,
-      requiresApproval: false as const,
-      commissionPercent: 10,
-      platformFeePercent: 0,
-      listingCategories: [] as string[],
-      sellerPayoutMethod: 'stripe' as const,
-    },
-    anonymousAuth: {
-      enabled: false as const,
-      tables: [] as string[],
-    },
+    showBuiltWithBadge: false,
   },
+
   compliance: {
     accountDeletionGracePeriod: {
       days: 30,
     },
-    immediateDeleteAllowed: false as const,
-    allowImmediateDeletion: false as const,
+    allowImmediateDeletion: false,
+    dataRetentionDays: 365,
   },
+
+  multiTenancy: {
+    enabled: false,
+    defaultRole: 'member' as const,
+  },
+
+  navigation: {
+    tabs: [
+      { id: 'dashboard', label: 'Home', icon: 'Home', file: 'dashboard' },
+      { id: 'profile', label: 'Profile', icon: 'User', file: 'profile' },
+      { id: 'settings', label: 'Settings', icon: 'Settings', file: 'settings' },
+    ],
+    modals: [] as string[],
+    hiddenScreens: [] as string[],
+  },
+
   backend: {
     supabase: {
-      url: process.env.EXPO_PUBLIC_SUPABASE_URL ?? '',
-      anonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
+      url: process.env.EXPO_PUBLIC_SUPABASE_URL as string,
+      anonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as string,
+    },
+    posthog: {
+      apiKey: process.env.EXPO_PUBLIC_POSTHOG_API_KEY ?? '',
+      host: process.env.EXPO_PUBLIC_POSTHOG_HOST ?? 'https://app.posthog.com',
+    },
+    revenuecat: {
+      iosKey: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? '',
+      androidKey: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY ?? '',
+    },
+    stripe: {
+      publishableKey: process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '',
+    },
+    telemetry: {
+      ingestSecret: process.env.EXPO_PUBLIC_TELEMETRY_SECRET ?? '',
     },
   },
+
+  growth: {
+    referralCodeLength: 8,
+    experimentsEnabled: true,
+    defaultBackgroundSyncInterval: 60_000,
+  },
+
+  ui: {
+    breakpoints: {
+      tablet: 768,
+      desktop: 1024,
+    },
+  },
+
   media: {
-    maxImageEdge: 1200,
-    maxUploadBytes: 5 * 1024 * 1024,
+    maxImageEdge: 1920,
+    maxUploadBytes: 10 * 1024 * 1024,
     allowedContentTypes: ['image/jpeg', 'image/png', 'image/webp'],
     defaultBucket: 'media',
     signedUrlTtlSeconds: 3600,
   },
-  llm: {
-    provider: 'openai' as const,
-    defaultChatModel: 'gpt-4o-mini',
-    defaultEmbedModel: 'text-embedding-3-small',
-    defaultTranscribeModel: 'whisper-1',
-    defaultMaxTokens: 1024,
-    budgetPeriod: 'day' as const,
-    costScope: 'llm',
+
+  search: {
+    defaultLimit: 20,
+    maxLimit: 100,
   },
-} as const satisfies GASConfig;
+
+  realtime: {
+    presenceTimeoutMs: 5000,
+  },
+
+  releaseChannels: {
+    storeUrl: {
+      ios: '',
+      android: '',
+    },
+  },
+
+  integrations: {
+    oauthProviders: [] as Array<{ provider: string; scopes: string[] }>,
+  },
+} as const satisfies GasConfig;
