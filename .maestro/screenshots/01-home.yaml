@@ -1,0 +1,26 @@
+appId: ${MAESTRO_APP_ID}
+name: screenshot-home
+---
+# Navigate to Home screen and capture screenshot.
+# TODO: Replace navigation steps with app-specific commands once real routes exist.
+- launchApp:
+    clearState: false
+# TODO: If the app requires authentication, add sign-in steps here before navigating home.
+# Example:
+#   - tapOn:
+#       id: "email-input"
+#   - inputText: "${MAESTRO_TEST_EMAIL}"
+#   - tapOn:
+#       id: "password-input"
+#   - inputText: "${MAESTRO_TEST_PASSWORD}"
+#   - tapOn:
+#       text: "Sign in"
+- waitForAnimationToEnd:
+    timeout: 3000
+# TODO: Navigate to Home tab if not already there.
+# Example:
+#   - tapOn:
+#       id: "tab-home"
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: screenshots/_raw/${MAESTRO_PLATFORM}/01-home

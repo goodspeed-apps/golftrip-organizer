@@ -1,0 +1,52 @@
+diff --git a/node_modules/react-native/scripts/react-native-xcode.sh b/node_modules/react-native/scripts/react-native-xcode.sh
+index 1dcdf55..d375a3e 100755
+--- a/node_modules/react-native/scripts/react-native-xcode.sh
++++ b/node_modules/react-native/scripts/react-native-xcode.sh
+@@ -10,6 +10,23 @@
+ 
+ # Print commands before executing them (useful for troubleshooting)
+ set -x -e
++
++# iOS 26 PAC workaround (hermes#1966, expo#44356/44606/44680):
++# Force USE_HERMES=false to ship JS source instead of precompiled Hermes bytecode.
++# Hermes runtime is still linked and interprets the source at startup — same as
++# dev builds, which work on iOS 26 / iPhone 17 Pro. Precompiled .hbc bytecode
++# contains pointer operations that fail ARM64 PAC validation on A18 Pro / A19.
++USE_HERMES=false
++export USE_HERMES
++
++# Also unset SKIP_BUNDLING: EAS sets it in Debug-config builds to defer
++# bundling to its EAGER_BUNDLE phase, but for buildConfiguration=Debug
++# production-distribution IPAs, EAGER_BUNDLE doesn't run and main.jsbundle
++# never gets embedded, leaving the runtime with "No script URL provided".
++unset SKIP_BUNDLING
++FORCE_BUNDLING=1
++export FORCE_BUNDLING
++
+ DEST="$CONFIGURATION_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH"
+ 
+ # Enables iOS devices to get the IP address of the machine running Metro
+@@ -45,7 +62,7 @@ case "$CONFIGURATION" in
+       echo "Bundling for physical device. Use the SKIP_BUNDLING flag to change this behavior."
+     fi
+ 
+-    DEV=true
++DEV=true
+     ;;
+   "")
+     echo "$0 must be invoked by Xcode"
+@@ -56,6 +73,14 @@ case "$CONFIGURATION" in
+     ;;
+ esac
+ 
++# iOS 26 PAC workaround continued: even with buildConfiguration=Debug, bundle
++# the JS in production mode (DEV=false). Hermes Debug binary is linked for
++# PAC compatibility, but __DEV__=true in the JS bundle would activate Expo
++# dev features (LogBox devtools websocket, react-devtools, async-require
++# socket, fast refresh) that throw "Cannot create devtools websocket
++# connections in embedded environments" without a Metro server.
++DEV=false
++
+ # Path to react-native folder inside node_modules
+ REACT_NATIVE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ # Most projects have their project root, one level up from their Xcode project dir (the "ios" directory)

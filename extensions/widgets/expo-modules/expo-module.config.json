@@ -1,0 +1,9 @@
+{
+  "platforms": ["ios", "android"],
+  "ios": {
+    "modules": ["WidgetDataModule"]
+  },
+  "android": {
+    "modules": ["WidgetDataModule"]
+  }
+}
