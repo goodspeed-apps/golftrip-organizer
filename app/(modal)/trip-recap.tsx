@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import Animated, { FadeInDown, withSpring, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Trophy, Star, DollarSign, Flag, X, Lock } from 'lucide-react-native';
 import { useThemeColors } from '@/context/ThemeContext';
 import { useAnalytics } from '@/hooks/useAnalytics';
@@ -38,7 +38,7 @@ interface RecapData {
 }
 
 export default function TripRecapScreen() {
-  const colors = useThemeColors();
+  const { colors } = useThemeColors();
   const { track } = useAnalytics();
   const { user } = useAuth();
   const { showPaywall } = usePaywall();
@@ -51,14 +51,11 @@ export default function TripRecapScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
 
-  const scale = useSharedValue(1);
-  const pressStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-
   const fetchRecap = useCallback(async () => {
     if (!tripId) { setLoading(false); return; }
     const start = Date.now();
     try {
-      const end = trackApiLatency('fetch_trip_recap', start);
+      const end = trackApiLatency('fetch_trip_recap');
       const [tripRes, teeRes, recapRes] = await Promise.all([
         supabase.from('trips').select('name, start_date, end_date, recap_unlocked').eq('id', tripId).single(),
         supabase.from('tee_times').select('course_name').eq('trip_id', tripId),
@@ -72,7 +69,7 @@ export default function TripRecapScreen() {
       if (recapRes.data?.winner_member_id) {
         const { data: member } = await supabase
           .from('trip_members').select('guest_name, users(display_name)').eq('id', recapRes.data.winner_member_id).single();
-        winnerName = (member as { guest_name?: string; users?: { display_name?: string } } | null)?.users?.display_name ?? member?.guest_name ?? 'TBD';
+        winnerName = (member as { guest_name?: string; users?: { display_name?: string } } | null)?.users?.display_name ?? (member as { guest_name?: string } | null)?.guest_name ?? 'TBD';
       }
       const roundsRes = await supabase.from('rounds').select('id').eq('trip_id', tripId);
       setRecap({
@@ -106,7 +103,7 @@ export default function TripRecapScreen() {
     setPurchasing(true);
     track('tap_unlock_recap', { tripId });
     try {
-      await showPaywall({ productId: 'trip_recap_299' });
+      await showPaywall('trip_recap_299');
       await supabase.from('trips').update({ recap_unlocked: true }).eq('id', tripId);
       setRecap((prev) => prev ? { ...prev, recapUnlocked: true } : prev);
       track('recap_unlocked', { tripId });
@@ -131,10 +128,14 @@ export default function TripRecapScreen() {
     showToast({ message: 'Saved to Photos', type: 'success' });
   };
 
-  if (loading) return <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}><LoadingSkeleton variant="card" /></SafeAreaView>;
+  if (loading) return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <LoadingSkeleton variant="card" />
+    </SafeAreaView>
+  );
   if (error || !recap) return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <EmptyState icon="alert-circle" title="Couldn't Load Recap" description={error ?? 'No data found.'} actionLabel="Retry" onAction={fetchRecap} />
+      <EmptyState icon="alert-circle" title="Couldn't Load Recap" description={error ?? 'No data found.'} action={{ label: 'Retry', onPress: fetchRecap }} />
     </SafeAreaView>
   );
 
@@ -171,29 +172,41 @@ export default function TripRecapScreen() {
             </Pressable>
           </Animated.View>
         ) : (
-          <Animated.View entering={FadeInDown.delay(100)} style={{ marginTop: 24, gap: 12 }}>
-            <Animated.View style={pressStyle}>
-              <Pressable
-                onPress={handleShare}
-                onPressIn={() => { scale.value = withSpring(0.97); }}
-                onPressOut={() => { scale.value = withSpring(1); }}
-                accessibilityLabel="Share recap"
-                accessibilityHint="Opens the native share sheet to share your trip recap"
-                style={{ backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: 'center' }}
-              >
-                <Text style={{ fontSize: 16, fontFamily: 'PlusJakartaSans_700Bold', color: colors.textOnPrimary }}>Share Recap</Text>
-              </Pressable>
-            </Animated.View>
+          <Animated.View entering={FadeInDown.delay(100)} style={{ marginTop: 24, flexDirection: 'row', gap: 12 }}>
+            <Pressable
+              onPress={handleShare}
+              accessibilityLabel="Share recap"
+              style={{ flex: 1, backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: 'center' }}
+            >
+              <Text style={{ fontSize: 15, fontFamily: 'PlusJakartaSans_700Bold', color: colors.textOnPrimary }}>Share Recap</Text>
+            </Pressable>
             <Pressable
               onPress={handleDownload}
-              accessibilityLabel="Download recap image"
-              accessibilityHint="Saves the recap card to your Camera Roll"
-              style={{ backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: colors.border }}
+              accessibilityLabel="Download recap"
+              style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: colors.border }}
             >
-              <Text style={{ fontSize: 16, fontFamily: 'PlusJakartaSans_600SemiBold', color: colors.text }}>Save to Photos</Text>
+              <Text style={{ fontSize: 15, fontFamily: 'PlusJakartaSans_700Bold', color: colors.text }}>Save to Photos</Text>
             </Pressable>
           </Animated.View>
         )}
+
+        {/* Stats summary */}
+        <Animated.View entering={FadeInDown.delay(150)} style={{ marginTop: 24, gap: 12 }}>
+          <Text style={{ fontSize: 16, fontFamily: 'PlusJakartaSans_700Bold', color: colors.text, marginBottom: 4 }}>Trip Stats</Text>
+          {[
+            { icon: Trophy, label: 'Winner', value: recap.winnerName },
+            { icon: Flag, label: 'Rounds Played', value: String(recap.totalRounds) },
+            { icon: Star, label: 'Best Score', value: recap.bestRoundScore != null ? String(recap.bestRoundScore) : 'N/A' },
+            { icon: Star, label: 'Group Avg', value: recap.groupAvgScore != null ? recap.groupAvgScore.toFixed(1) : 'N/A' },
+            { icon: DollarSign, label: 'Cost / Person', value: recap.totalCostPerPerson != null ? `$${(recap.totalCostPerPerson / 100).toFixed(2)}` : 'N/A' },
+          ].map(({ icon: Icon, label, value }) => (
+            <View key={label} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border }}>
+              <Icon size={18} color={colors.primary} />
+              <Text style={{ flex: 1, fontSize: 14, fontFamily: 'Inter_400Regular', color: colors.textSecondary }}>{label}</Text>
+              <Text style={{ fontSize: 14, fontFamily: 'Inter_600SemiBold', color: colors.text }}>{value}</Text>
+            </View>
+          ))}
+        </Animated.View>
       </ScrollView>
     </SafeAreaView>
   );

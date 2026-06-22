@@ -23,7 +23,7 @@ import { fetchMyTrips, deleteTrip } from '@/services/tripService';
 import type { TripWithMemberCount } from '@/types/golf';
 
 export default function DashboardScreen() {
-  const colors = useThemeColors();
+  const { colors } = useThemeColors();
   const { user } = useAuth();
   const { track } = useAnalytics();
   const { toast, showToast } = useToast();
@@ -187,33 +187,35 @@ export default function DashboardScreen() {
         accessibilityLabel="Create a new trip"
         accessibilityHint="Opens the trip creation form"
         testID="dashboard-create-trip"
-        style={[styles.fab, { backgroundColor: colors.primary, borderRadius: BorderRadius.xl * 2 }]}
+        style={[styles.fab, { backgroundColor: colors.primary, borderRadius: 28, shadowColor: colors.text }]}
       >
-        <PlusCircle size={20} color={colors.textOnPrimary} />
-        <Text style={[styles.fabText, { color: colors.textOnPrimary }]}>New Trip</Text>
+        <PlusCircle size={28} color="#fff" />
       </Pressable>
-
-      {toast && <Toast message={toast.message} type={toast.type} />}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { paddingTop: Spacing.md, paddingBottom: Spacing.lg },
-  greeting: { fontSize: 14, fontFamily: 'Manrope_400Regular' },
-  name: { fontSize: 26, fontFamily: 'Outfit_700Bold', marginTop: 2 },
-  sectionTitle: { fontSize: 18, fontFamily: 'Outfit_700Bold', marginBottom: Spacing.md },
+  header: { paddingTop: Spacing.lg, paddingBottom: Spacing.md },
+  greeting: { fontSize: 14, fontWeight: '500' },
+  name: { fontSize: 26, fontWeight: '800', letterSpacing: -0.5 },
+  sectionTitle: { fontSize: 18, fontWeight: '700', marginBottom: Spacing.md, marginTop: Spacing.sm },
   errorCard: { padding: Spacing.md, marginBottom: Spacing.md },
-  errorText: { fontFamily: 'Manrope_400Regular', fontSize: 14 },
-  retryBtn: { marginTop: Spacing.sm },
-  retryText: { fontFamily: 'Manrope_600SemiBold', fontSize: 14 },
+  errorText: { fontSize: 14 },
+  retryBtn: { marginTop: 8, alignSelf: 'flex-start' },
+  retryText: { fontSize: 14, fontWeight: '600' },
   fab: {
-    position: 'absolute', bottom: Spacing.xl, right: Spacing.lg,
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
-    paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm + 4,
-    elevation: 4,
-    shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.18, shadowRadius: 6,
+    position: 'absolute',
+    bottom: Spacing.xl,
+    right: Spacing.lg,
+    width: 56,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  fabText: { fontSize: 15, fontFamily: 'Outfit_700Bold' },
 });

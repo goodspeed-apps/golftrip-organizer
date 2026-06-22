@@ -41,7 +41,7 @@ type RoundInfo = {
 };
 
 export default function ScoreEntryModal() {
-  const colors = useThemeColors();
+  const { colors } = useThemeColors();
   const router = useRouter();
   const { track } = useAnalytics();
   const { user } = useAuth();
@@ -136,7 +136,11 @@ export default function ScoreEntryModal() {
   const completedCount = memberScores.filter((m) => m.totalScore !== '').length;
   const isComplete = completedCount === memberScores.length && memberScores.length > 0;
 
-  if (loading) return <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}><LoadingSkeleton variant="list" /></SafeAreaView>;
+  if (loading) return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <LoadingSkeleton variant="list" />
+    </SafeAreaView>
+  );
   if (error) return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <EmptyState icon="alert-circle" title="Oops!" description={error} action={{ label: 'Retry', onPress: fetchRoundData }} />
@@ -170,38 +174,44 @@ export default function ScoreEntryModal() {
         </View>
 
         {/* Progress */}
-        <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 12, color: colors.textSecondary, marginHorizontal: 20, marginBottom: 8 }}>
-          {completedCount}/{memberScores.length} players scored
+        <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginBottom: 8 }}>
+          {completedCount} / {memberScores.length} scores entered
         </Text>
 
-        {/* Player List */}
-        {memberScores.length === 0 ? (
-          <EmptyState icon="users" title="No players found" description="Add members to this trip to enter scores." />
-        ) : (
-          <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }} keyboardShouldPersistTaps="handled">
-            {memberScores.map((m, i) => (
-              <Animated.View key={m.memberId} entering={FadeInDown.delay(50 * i).springify()}>
-                <ScorePlayerRow
-                  member={m}
-                  holeByHole={holeByHole}
-                  onTotalChange={(v) => updateScore(m.memberId, v)}
-                  onHoleChange={(hole, v) => updateHoleScore(m.memberId, hole, v)}
-                  colors={colors}
-                />
-              </Animated.View>
-            ))}
-          </ScrollView>
-        )}
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
+          {memberScores.map((ms) => (
+            <ScorePlayerRow
+              key={ms.memberId}
+              member={ms}
+              holeByHole={holeByHole}
+              onUpdateScore={updateScore}
+              onUpdateHoleScore={updateHoleScore}
+            />
+          ))}
+        </ScrollView>
 
-        {/* Save Button */}
-        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20, backgroundColor: colors.background, borderTopWidth: 1, borderTopColor: colors.border }}>
-          <TouchableOpacity onPress={saveAllScores} disabled={saving || memberScores.length === 0}
-            accessibilityLabel="Save all scores" accessibilityHint="Saves scores for all players and updates the leaderboard"
-            style={{ backgroundColor: isComplete ? colors.primary : colors.primaryMuted, borderRadius: 14, paddingVertical: 16, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' }}>
-            {saving ? <ActivityIndicator color={colors.textOnPrimary} /> : (
+        {/* Save button */}
+        <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: colors.border }}>
+          <TouchableOpacity
+            onPress={saveAllScores}
+            disabled={saving || !isComplete}
+            accessibilityLabel="Save scores"
+            style={{
+              backgroundColor: isComplete ? colors.primary : colors.border,
+              borderRadius: 14,
+              paddingVertical: 16,
+              alignItems: 'center',
+              flexDirection: 'row',
+              justifyContent: 'center',
+              gap: 8,
+            }}
+          >
+            {saving ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
               <>
-                <Save size={18} color={colors.textOnPrimary} />
-                <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 16, color: colors.textOnPrimary, marginLeft: 8 }}>Save All Scores</Text>
+                <Save size={18} color="#fff" />
+                <Text style={{ color: '#fff', fontFamily: 'Inter_600SemiBold', fontSize: 16 }}>Save Scores</Text>
               </>
             )}
           </TouchableOpacity>

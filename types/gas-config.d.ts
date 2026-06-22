@@ -1,13 +1,27 @@
+/**
+ * GAS Template — Typed configuration schema
+ * All types consumed by gas.config.ts and the rest of the app.
+ */
+
+// ─── App ──────────────────────────────────────────────────────────────────────
+
 export interface GasAppConfig {
   name: string;
   slug: string;
   scheme: string;
   version: string;
-  minRuntimeVersion: string;
-  appStoreUrl?: string;
+  description: string;
+  icon: string;
+  splash: string;
+  bundleId: {
+    ios: string;
+    android: string;
+  };
 }
 
-export interface GasColors {
+// ─── Design ───────────────────────────────────────────────────────────────────
+
+export interface GasColorPalette {
   primary: string;
   primaryDark: string;
   secondary: string;
@@ -25,26 +39,27 @@ export interface GasColors {
   success: string;
   warning: string;
   error: string;
+  [key: string]: string;
 }
 
 export interface GasTypography {
-  displayFont?: string;
-  bodyFont?: string;
-  monoFont?: string;
+  headingWeight: '400' | '500' | '600' | '700' | '800' | '900';
+  fontFamily?: string;
+  displayFontFamily?: string;
 }
 
 export interface GasLayout {
-  cardStyle: 'flat' | 'elevated' | 'outlined' | 'filled';
-  borderRadius: string;
-  spacing: string;
+  spacing: 'compact' | 'comfortable' | 'spacious';
+  borderRadius: 'none' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
 }
 
 export interface GasDesignConfig {
-  colors: GasColors;
+  colors: GasColorPalette;
   typography: GasTypography;
   layout: GasLayout;
-  mood: string;
 }
+
+// ─── Navigation ───────────────────────────────────────────────────────────────
 
 export interface GasTabConfig {
   id: string;
@@ -56,14 +71,9 @@ export interface GasTabConfig {
 export interface GasNavigationConfig {
   tabs: GasTabConfig[];
   modals: string[];
-  hiddenScreens: string[];
 }
 
-export interface GasAnalyticsConfig {
-  enabled: boolean;
-  crashReporting: boolean;
-  sessionRecording?: boolean;
-}
+// ─── Auth ─────────────────────────────────────────────────────────────────────
 
 export interface GasBiometricConfig {
   enabled: boolean;
@@ -71,6 +81,7 @@ export interface GasBiometricConfig {
 }
 
 export interface GasAuthConfig {
+  email: boolean;
   google: boolean;
   apple: boolean;
   twitter: boolean;
@@ -80,65 +91,78 @@ export interface GasAuthConfig {
   mfa?: boolean;
 }
 
-export interface GasTierConfig {
+// ─── IAP / Monetisation ───────────────────────────────────────────────────────
+
+export interface GasIAPTier {
   name: string;
   productId: string;
-  price: number;
+  price: string;
   features: string[];
-  trialDays?: number;
+  highlighted?: boolean;
 }
 
 export interface GasOneTimePurchase {
-  name: string;
+  id: string;
   productId: string;
-  price: number;
+  type: string;
+  name: string;
   description?: string;
+  price: string;
 }
 
 export interface GasCreditPack {
-  id?: string;
+  id: string;
+  productId: string;
+  credits: number;
+  bonusCredits?: number;
+  price: string;
   name?: string;
-  amount: number;
-  price: number;
-  productId?: string;
-  popular?: boolean;
-  bonus?: number;
 }
 
 export interface GasCreditsConfig {
   enabled: boolean;
-  currencyName: string;
-  currencyNamePlural: string;
-  currencyIcon?: string;
   packs: GasCreditPack[];
 }
 
-export interface GasMarketplaceConfig {
+export interface GasIAPConfig {
   enabled: boolean;
-  requiresApproval?: boolean;
-}
-
-export interface GasInAppPurchases {
-  enabled: boolean;
-  tiers: GasTierConfig[];
+  tiers: GasIAPTier[];
   oneTimePurchases?: GasOneTimePurchase[];
   credits?: GasCreditsConfig;
-  marketplace?: GasMarketplaceConfig;
+}
+
+// ─── Marketplace ──────────────────────────────────────────────────────────────
+
+export interface GasMarketplaceConfig {
+  enabled: boolean;
+  platformFeePercent: number;
+  listingCategories: string[];
+  sellerPayoutMethod: string;
+  [key: string]: unknown;
+}
+
+// ─── Features ─────────────────────────────────────────────────────────────────
+
+export interface GasAnalyticsConfig {
+  enabled: boolean;
+  provider?: string;
+}
+
+export interface GasAdsConfig {
+  enabled: boolean;
+  provider: 'admob' | string;
+  bannerAdUnitId?: string;
+  interstitialAdUnitId?: string;
+}
+
+export interface GasDarkModeConfig {
+  enabled: boolean;
+  default?: 'light' | 'dark' | 'system';
 }
 
 export interface GasGamificationConfig {
   enabled: boolean;
   elements: string[];
-}
-
-export interface GasDarkModeConfig {
-  enabled: boolean;
-  default: 'dark' | 'light' | 'system';
-}
-
-export interface GasPushNotificationsConfig {
-  enabled: boolean;
-  channels: string[];
 }
 
 export interface GasSearchConfig {
@@ -157,150 +181,98 @@ export interface GasOnboardingConfig {
   steps: string[];
 }
 
-export interface GasAdsConfig {
+export interface GasPushNotificationsConfig {
   enabled: boolean;
-  provider: string;
-}
-
-export interface GasAccountDeletionGracePeriod {
-  days: number;
-}
-
-export interface GasCompliance {
-  gdprConsent: boolean;
-  ccpaNotice: boolean;
-  attDialog: boolean;
-  accountDeletionGracePeriod: GasAccountDeletionGracePeriod;
-  allowImmediateDeletion: boolean;
-}
-
-export interface GasOfflineSyncConfig {
-  enabled: boolean;
-  entities: string[];
-  strategy: string;
-  encrypted?: boolean;
-}
-
-export interface GasTelemetryConfig {
-  enabled: boolean;
-  ingestUrl: string;
-  flushIntervalMs: number;
-  maxQueueSize: number;
-  debugOverlay?: boolean;
-}
-
-export interface GasAnonymousAuthConfig {
-  enabled: boolean;
-  tables: string[];
+  provider?: string;
 }
 
 export interface GasFeaturesConfig {
   analytics: GasAnalyticsConfig;
-  auth: GasAuthConfig;
-  inAppPurchases: GasInAppPurchases;
-  gamification: GasGamificationConfig;
+  inAppPurchases: GasIAPConfig;
   darkMode: GasDarkModeConfig;
-  pushNotifications: GasPushNotificationsConfig;
-  helpSystem: boolean;
+  gamification: GasGamificationConfig;
   search: GasSearchConfig;
   i18n: GasI18nConfig;
   onboarding: GasOnboardingConfig;
-  csvExport?: boolean;
+  auth: GasAuthConfig;
   ads: GasAdsConfig;
-  compliance: GasCompliance;
-  offlineSync?: GasOfflineSyncConfig;
-  telemetry?: GasTelemetryConfig;
+  helpSystem: boolean;
+  csvExport?: boolean;
+  pushNotifications?: GasPushNotificationsConfig;
+  marketplace?: GasMarketplaceConfig;
   showBuiltWithBadge?: boolean;
-  anonymousAuth?: GasAnonymousAuthConfig;
+  [key: string]: unknown;
 }
+
+// ─── Backend ──────────────────────────────────────────────────────────────────
 
 export interface GasSupabaseConfig {
   url: string;
   anonKey: string;
 }
 
-export interface GasRevenueCatConfig {
-  iosKey: string;
-  androidKey: string;
-}
-
-export interface GasPostHogConfig {
-  apiKey: string;
-  host: string;
-}
-
-export interface GasTelemetryBackendConfig {
-  ingestSecret: string;
-}
-
-export interface GasStripeConfig {
-  publishableKey: string;
-}
-
-export interface GasBackend {
+export interface GasBackendConfig {
   supabase: GasSupabaseConfig;
-  revenuecat: GasRevenueCatConfig;
-  posthog: GasPostHogConfig;
-  telemetry: GasTelemetryBackendConfig;
-  stripe?: GasStripeConfig;
 }
 
-export interface GasMultiTenancyConfig {
-  enabled: boolean;
-  defaultRole: string;
+// ─── Compliance ───────────────────────────────────────────────────────────────
+
+export interface GasAccountDeletionGracePeriod {
+  days: number;
+  allowImmediate: boolean;
 }
 
-export interface GasGrowthConfig {
-  referralCodeLength: number;
-  experimentsEnabled: boolean;
-  defaultBackgroundSyncInterval: number;
+export interface GasCompliance {
+  gdprConsent: boolean;
+  ccpaNotice: boolean;
+  accountDeletionGracePeriod: GasAccountDeletionGracePeriod;
+  [key: string]: unknown;
 }
 
-export interface GasUiConfig {
-  breakpoints: {
-    tablet: number;
-    desktop: number;
-  };
+// ─── Legal ────────────────────────────────────────────────────────────────────
+
+export interface GasLegalConfig {
+  privacyPolicyUrl?: string;
+  termsOfServiceUrl?: string;
+  [key: string]: unknown;
 }
 
-export interface GasRealtimeConfig {
-  presenceTimeoutMs: number;
+// ─── LLM ─────────────────────────────────────────────────────────────────────
+
+export interface GasLLMConfig {
+  provider?: string;
+  defaultChatModel?: string;
+  defaultEmbedModel?: string;
+  defaultTranscribeModel?: string;
+  defaultMaxTokens?: number;
+  budgetPeriod?: string;
+  costScope?: string;
+  [key: string]: unknown;
 }
 
-export interface GasMediaConfig {
-  maxImageEdge: number;
-  maxUploadBytes: number;
-  defaultBucket: string;
-  allowedContentTypes: string[];
-  signedUrlTtlSeconds: number;
+// ─── Release Channels ─────────────────────────────────────────────────────────
+
+export interface GasStoreUrlConfig {
+  ios?: string;
+  android?: string;
 }
 
-export interface GasSearchServiceConfig {
-  defaultLimit: number;
-  maxLimit: number;
+export interface GasReleaseChannelsConfig {
+  storeUrl?: GasStoreUrlConfig;
+  [key: string]: unknown;
 }
 
-export interface GasOAuthProviderConfig {
-  provider: string;
-  scopes?: string[];
-}
-
-export interface GasIntegrationsConfig {
-  oauthProviders: GasOAuthProviderConfig[];
-}
+// ─── Root config ─────────────────────────────────────────────────────────────
 
 export interface GasConfig {
   app: GasAppConfig;
   design: GasDesignConfig;
   navigation: GasNavigationConfig;
   features: GasFeaturesConfig;
+  backend: GasBackendConfig;
   compliance: GasCompliance;
-  backend: GasBackend;
-  multiTenancy: GasMultiTenancyConfig;
-  growth: GasGrowthConfig;
-  ui: GasUiConfig;
-  realtime?: GasRealtimeConfig;
-  media: GasMediaConfig;
-  search: GasSearchServiceConfig;
-  integrations: GasIntegrationsConfig;
+  legal?: GasLegalConfig;
+  llm: GasLLMConfig;
+  releaseChannels?: GasReleaseChannelsConfig;
+  [key: string]: unknown;
 }
