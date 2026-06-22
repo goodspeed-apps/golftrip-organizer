@@ -38,7 +38,7 @@ jobs:
         env:
           MAESTRO_APP_ID: ${{ secrets.MAESTRO_APP_ID }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: screenshots-${{ inputs.platform }}
           path: screenshots/
