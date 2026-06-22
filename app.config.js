@@ -99,7 +99,7 @@ if (process.env.EXPO_PUBLIC_SENTRY_DSN) {
   ]);
 }
 
-const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID ?? 'YOUR_PROJECT_ID';
+const EAS_PROJECT_ID = 'd662cc12-d08f-499b-8086-095fe6ebb829';
 
 module.exports = ({ config: expoConfig }) => ({
   ...expoConfig,
@@ -136,7 +136,7 @@ module.exports = ({ config: expoConfig }) => ({
   },
 web: {
     bundler: 'metro',
-    output: 'static',
+    output: 'single',
     // favicon intentionally omitted — gas-template does not ship one, and
     // pointing at a non-existent path makes expo export fail. The web
     // preview will use a default favicon; a real one can be added later.
@@ -149,7 +149,7 @@ web: {
     url: `https://u.expo.dev/${EAS_PROJECT_ID}`,
   },
   runtimeVersion: {
-    policy: 'fingerprint',
+    policy: 'appVersion',
   },
   extra: {
     eas: {

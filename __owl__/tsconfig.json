@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "typeRoots": ["../node_modules/@types"],
+    "types": []
+  },
+  "include": [
+    "./**/*.ts",
+    "./react-native-owl.d.ts",
+    "./detox.d.ts"
+  ]
+}
