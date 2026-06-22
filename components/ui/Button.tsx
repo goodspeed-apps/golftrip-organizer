@@ -1,48 +1,49 @@
-import { TouchableOpacity, Text, ActivityIndicator, StyleSheet, type ViewStyle, type TextStyle } from 'react-native';
+import React from 'react';
+import {
+  TouchableOpacity,
+  Text,
+  ActivityIndicator,
+  StyleSheet,
+  type StyleProp,
+  type ViewStyle,
+  type TextStyle,
+} from 'react-native';
 import { useThemeColors } from '@/context/ThemeContext';
 
 export interface ButtonProps {
-  title: string;
-  onPress: () => void | Promise<void>;
+  label: string;
+  onPress: () => void;
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive';
   size?: 'sm' | 'md' | 'lg';
   disabled?: boolean;
   loading?: boolean;
-  style?: ViewStyle;
-  textStyle?: TextStyle;
-  accessibilityLabel?: string;
-  accessibilityHint?: string;
+  fullWidth?: boolean;
+  style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
   testID?: string;
 }
 
 export function Button({
-  title,
+  label,
   onPress,
   variant = 'primary',
   size = 'md',
   disabled = false,
   loading = false,
+  fullWidth = false,
   style,
   textStyle,
-  accessibilityLabel,
-  accessibilityHint,
   testID,
 }: ButtonProps) {
   const { colors } = useThemeColors();
 
-  const sizeStyles: Record<string, { paddingVertical: number; paddingHorizontal: number; fontSize: number; borderRadius: number }> = {
-    sm: { paddingVertical: 6, paddingHorizontal: 12, fontSize: 13, borderRadius: 8 },
-    md: { paddingVertical: 12, paddingHorizontal: 20, fontSize: 15, borderRadius: 12 },
-    lg: { paddingVertical: 16, paddingHorizontal: 28, fontSize: 17, borderRadius: 14 },
-  };
-
-  const currentSize = sizeStyles[size];
+  const isDisabled = disabled || loading;
 
   const getBackgroundColor = () => {
-    if (disabled || loading) return colors.border;
+    if (isDisabled && variant === 'primary') return colors.border;
     switch (variant) {
       case 'primary': return colors.primary;
-      case 'secondary': return colors.secondary ?? colors.surface;
+      case 'secondary': return colors.surface;
       case 'outline': return 'transparent';
       case 'ghost': return 'transparent';
       case 'destructive': return colors.error;
@@ -51,59 +52,80 @@ export function Button({
   };
 
   const getTextColor = () => {
-    if (disabled || loading) return colors.textSecondary;
+    if (isDisabled) return colors.textSecondary;
     switch (variant) {
-      case 'primary': return colors.textOnPrimary;
+      case 'primary': return colors.textOnPrimary ?? '#fff';
       case 'secondary': return colors.text;
       case 'outline': return colors.primary;
       case 'ghost': return colors.primary;
       case 'destructive': return '#fff';
-      default: return colors.textOnPrimary;
+      default: return colors.textOnPrimary ?? '#fff';
     }
   };
 
   const getBorderColor = () => {
-    if (variant === 'outline') return colors.primary;
-    if (variant === 'secondary') return colors.border;
-    return 'transparent';
+    switch (variant) {
+      case 'outline': return colors.primary;
+      case 'secondary': return colors.border;
+      default: return 'transparent';
+    }
+  };
+
+  const getPadding = () => {
+    switch (size) {
+      case 'sm': return { paddingVertical: 6, paddingHorizontal: 12 };
+      case 'lg': return { paddingVertical: 14, paddingHorizontal: 24 };
+      default: return { paddingVertical: 10, paddingHorizontal: 18 };
+    }
+  };
+
+  const getFontSize = () => {
+    switch (size) {
+      case 'sm': return 13;
+      case 'lg': return 16;
+      default: return 15;
+    }
   };
 
   return (
     <TouchableOpacity
       onPress={onPress}
-      disabled={disabled || loading}
-      accessibilityLabel={accessibilityLabel ?? title}
-      accessibilityHint={accessibilityHint}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: disabled || loading }}
+      disabled={isDisabled}
       testID={testID}
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: isDisabled, busy: loading }}
       style={[
         styles.base,
         {
           backgroundColor: getBackgroundColor(),
-          paddingVertical: currentSize.paddingVertical,
-          paddingHorizontal: currentSize.paddingHorizontal,
-          borderRadius: currentSize.borderRadius,
-          borderWidth: variant === 'outline' || variant === 'secondary' ? 1 : 0,
           borderColor: getBorderColor(),
+          borderWidth: variant === 'outline' || variant === 'secondary' ? 1 : 0,
+          opacity: isDisabled && variant !== 'primary' ? 0.5 : 1,
+          alignSelf: fullWidth ? 'stretch' : 'auto',
+          ...getPadding(),
         },
         style,
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={getTextColor()} size="small" />
+        <ActivityIndicator
+          size="small"
+          color={getTextColor()}
+        />
       ) : (
         <Text
           style={[
-            styles.text,
+            styles.label,
             {
               color: getTextColor(),
-              fontSize: currentSize.fontSize,
+              fontSize: getFontSize(),
             },
             textStyle,
           ]}
+          numberOfLines={1}
         >
-          {title}
+          {label}
         </Text>
       )}
     </TouchableOpacity>
@@ -112,11 +134,13 @@ export function Button({
 
 const styles = StyleSheet.create({
   base: {
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
   },
-  text: {
+  label: {
     fontWeight: '600',
+    textAlign: 'center',
   },
 });

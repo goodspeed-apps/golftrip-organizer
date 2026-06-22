@@ -19,7 +19,8 @@ import { ExpenseCategoryGrid } from '@/components/ExpenseCategoryGrid';
 type SplitType = 'all' | 'specific_people';
 
 export default function AddExpenseScreen() {
-  const colors = useThemeColors();
+  const themeContext = useThemeColors();
+  const colors = themeContext.colors;
   const { user } = useAuth();
   const { track } = useAnalytics();
   const { toast, showToast } = useToast();
@@ -134,26 +135,26 @@ export default function AddExpenseScreen() {
             <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.8 }}>Split</Text>
             <View style={{ flexDirection: 'row', gap: 10 }}>
               {(['all', 'specific_people'] as SplitType[]).map(type => (
-                <Pressable key={type} onPress={() => setSplitType(type)} accessibilityLabel={type === 'all' ? 'Split with everyone' : 'Split with specific people'} style={{ flex: 1, paddingVertical: 10, borderRadius: 12, backgroundColor: splitType === type ? colors.primary : colors.surface, borderWidth: 1, borderColor: splitType === type ? colors.primary : colors.border, alignItems: 'center' }}>
-                  <Text style={{ color: splitType === type ? colors.textOnPrimary : colors.text, fontWeight: '600', fontSize: 14 }}>{type === 'all' ? 'Everyone' : 'Select People'}</Text>
+                <Pressable key={type} onPress={() => setSplitType(type)} accessibilityLabel={type === 'all' ? 'Split with everyone' : 'Split with specific people'} style={{ flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: splitType === type ? colors.primary : colors.surface, borderWidth: 1, borderColor: splitType === type ? colors.primary : colors.border, alignItems: 'center' }}>
+                  <Text style={{ color: splitType === type ? colors.textOnPrimary : colors.text, fontWeight: '600', fontSize: 13 }}>{type === 'all' ? 'Everyone' : 'Specific'}</Text>
                 </Pressable>
               ))}
             </View>
           </Animated.View>
           {splitType === 'specific_people' && (
-            <Animated.View entering={FadeInDown.delay(250).springify()} style={{ marginTop: 12 }}>
+            <Animated.View entering={FadeInDown.delay(250).springify()} style={{ marginTop: 16 }}>
               <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.8 }}>Select People</Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {members.map(m => (
-                  <Pressable key={m.id} onPress={() => togglePerson(m.id)} accessibilityLabel={`Toggle ${m.display_name}`} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: selectedPeople.includes(m.id) ? colors.primary : colors.surface, borderWidth: 1, borderColor: selectedPeople.includes(m.id) ? colors.primary : colors.border }}>
+                  <Pressable key={m.id} onPress={() => togglePerson(m.id)} accessibilityLabel={`Toggle ${m.display_name}`} style={{ marginRight: 10, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: selectedPeople.includes(m.id) ? colors.primary : colors.surface, borderWidth: 1, borderColor: selectedPeople.includes(m.id) ? colors.primary : colors.border }}>
                     <Text style={{ color: selectedPeople.includes(m.id) ? colors.textOnPrimary : colors.text, fontWeight: '600', fontSize: 14 }}>{m.display_name}</Text>
                   </Pressable>
                 ))}
-              </View>
+              </ScrollView>
             </Animated.View>
           )}
         </ScrollView>
-        <Animated.View style={[{ padding: 20, paddingBottom: 34 }, saveStyle]}>
+        <Animated.View style={[{ padding: 20 }, saveStyle]}>
           <Pressable
             onPress={handleSave}
             disabled={saving}
@@ -161,7 +162,7 @@ export default function AddExpenseScreen() {
             accessibilityHint="Saves this expense to the trip"
             style={{ backgroundColor: saving ? colors.border : colors.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center' }}
           >
-            {saving ? <ActivityIndicator color={colors.textOnPrimary} /> : <Text style={{ color: colors.textOnPrimary, fontWeight: '700', fontSize: 16 }}>Save Expense</Text>}
+            {saving ? <ActivityIndicator color={colors.textOnPrimary} /> : <Text style={{ color: colors.textOnPrimary, fontSize: 16, fontWeight: '700' }}>Save Expense</Text>}
           </Pressable>
         </Animated.View>
       </KeyboardAvoidingView>
