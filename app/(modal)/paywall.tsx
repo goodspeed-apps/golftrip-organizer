@@ -206,30 +206,35 @@ export default function PaywallScreen() {
       padding: 16,
       borderWidth: 1,
       borderColor: colors.border,
-      flexDirection: 'row',
-      alignItems: 'center',
+      gap: 6,
     },
-    creditPackPopular: { borderColor: colors.primary },
-    creditPackInfo: { flex: 1 },
+    creditPackCardPopular: {
+      borderColor: colors.primary,
+      backgroundColor: colors.primary + '08',
+    },
+    creditPackHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     creditPackName: { fontSize: 15, fontWeight: '700', color: colors.text },
-    creditPackBonus: { fontSize: 12, color: colors.success, marginTop: 2 },
-    creditPackPrice: { fontSize: 16, fontWeight: '800', color: colors.primary, marginLeft: 12 },
-    popularBadge: {
-      position: 'absolute',
-      top: -8,
-      right: 12,
+    creditPackPopularBadge: {
       backgroundColor: colors.primary,
       borderRadius: 8,
       paddingHorizontal: 8,
-      paddingVertical: 2,
+      paddingVertical: 3,
     },
-    popularBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
-    footer: {
+    creditPackPopularText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+    creditPackAmount: { fontSize: 13, color: colors.textSecondary },
+    creditPackPrice: { fontSize: 16, fontWeight: '800', color: colors.primary },
+    creditPackBuyButton: {
+      backgroundColor: colors.primary,
+      borderRadius: 12,
+      paddingVertical: 10,
+      alignItems: 'center',
+      marginTop: 4,
+    },
+    creditPackBuyText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+    ctaContainer: {
       padding: 16,
       paddingBottom: 8,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-      gap: 4,
+      gap: 12,
     },
     ctaButton: {
       backgroundColor: colors.primary,
@@ -237,63 +242,70 @@ export default function PaywallScreen() {
       paddingVertical: 16,
       alignItems: 'center',
     },
-    ctaButtonDisabled: { opacity: 0.5 },
-    ctaText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-    restoreButton: { alignItems: 'center', paddingVertical: 10 },
-    restoreText: { color: colors.textSecondary, fontSize: 13 },
+    ctaButtonText: { fontSize: 17, fontWeight: '800', color: '#fff' },
+    restoreButton: { alignItems: 'center', paddingVertical: 8 },
+    restoreButtonText: { fontSize: 13, color: colors.textSecondary },
+    legalText: {
+      textAlign: 'center', color: colors.textSecondary,
+      fontSize: 11, paddingHorizontal: 16, paddingBottom: 16,
+    },
   }), [colors]);
 
   // --- Handlers ---
 
-  const handlePurchase = async () => {
+  const handleSelectPackage = (id: string) => {
+    setSelectedPackageId(id);
+    track('paywall_package_selected', { packageId: id });
+  };
+
+  const handlePurchasePlan = async () => {
     if (!selectedPackageId) return;
     setPurchasing(true);
     try {
       await purchase(selectedPackageId);
+      track('paywall_purchase_success', { tab: 'plans', packageId: selectedPackageId });
       router.back();
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : '';
-      if (!msg.includes('cancelled') && !msg.includes('cancel')) {
-        Alert.alert('Purchase failed', msg || 'Please try again.');
+      const err = e as { userCancelled?: boolean; message?: string };
+      if (!err?.userCancelled) {
+        Alert.alert('Purchase Failed', err?.message ?? 'Please try again.');
+        track('paywall_purchase_error', { tab: 'plans', error: err?.message });
       }
     } finally {
       setPurchasing(false);
     }
   };
 
-  const handleOneTimePurchase = async (productId: string) => {
+  const handlePurchaseProduct = async (productId: string) => {
     setPurchasing(true);
     try {
-      await purchaseOneTime(productId);
-      Alert.alert('Purchase Complete', 'You now have access to this feature.');
-      router.back();
+      if (purchaseOneTime) {
+        await purchaseOneTime(productId);
+      } else {
+        await purchaseProduct(productId);
+      }
+      track('paywall_purchase_success', { tab: 'products', productId });
+      Alert.alert('Purchase Complete', 'Your purchase is now active!');
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : '';
-      if (!msg.includes('cancelled') && !msg.includes('cancel')) {
-        Alert.alert('Purchase failed', msg || 'Please try again.');
+      const err = e as { userCancelled?: boolean; message?: string };
+      if (!err?.userCancelled) {
+        Alert.alert('Purchase Failed', err?.message ?? 'Please try again.');
       }
     } finally {
       setPurchasing(false);
     }
   };
 
-  const handleCreditPurchase = async (packId: string, productId: string) => {
+  const handlePurchaseCredits = async (productId: string, amount: number) => {
     setPurchasing(true);
     try {
-      // Purchase consumable via RevenueCat, then validate server-side
       await purchaseProduct(productId);
-      const pack = CREDITS_CONFIG?.packs.find(p => p.id === packId);
-      const totalCredits = (pack?.credits ?? 0) + (pack?.bonusCredits ?? 0);
-      await callEdge('validate-purchase', {
-        product_id: productId,
-        type: 'consumable',
-        credits_amount: totalCredits,
-      });
-      Alert.alert('Credits Added', `${totalCredits} ${CREDITS_CONFIG?.currencyNamePlural ?? 'credits'} added to your balance.`);
+      track('paywall_purchase_success', { tab: 'credits', productId, amount });
+      Alert.alert('Credits Added!', `${amount} ${CREDITS_CONFIG?.currencyNamePlural ?? CREDITS_CONFIG?.currencyName ?? 'credits'} have been added to your account.`);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : '';
-      if (!msg.includes('cancelled') && !msg.includes('cancel')) {
-        Alert.alert('Purchase failed', msg || 'Please try again.');
+      const err = e as { userCancelled?: boolean; message?: string };
+      if (!err?.userCancelled) {
+        Alert.alert('Purchase Failed', err?.message ?? 'Please try again.');
       }
     } finally {
       setPurchasing(false);
@@ -305,253 +317,246 @@ export default function PaywallScreen() {
     try {
       await restore();
       Alert.alert('Restored', 'Your purchases have been restored.');
-      router.back();
+      track('paywall_restore_success');
     } catch {
-      Alert.alert('Nothing to restore', 'No previous purchases found.');
+      Alert.alert('Restore Failed', 'No purchases found to restore.');
     } finally {
       setPurchasing(false);
     }
   };
 
-  // --- Render sections ---
+  // --- Render tab content ---
 
   const renderPlansTab = () => (
     <>
-      {/* Hero section */}
+      {/* Hero */}
       <View style={dynamicStyles.hero}>
         <View style={dynamicStyles.heroBadge}>
-          <Text style={dynamicStyles.heroBadgeText}>{APP_NAME.charAt(0)}</Text>
+          <Text style={dynamicStyles.heroBadgeText}>⚡</Text>
         </View>
-        <Text style={dynamicStyles.heroTitle}>Unlock Full Access</Text>
-        <Text style={dynamicStyles.heroSubtitle}>
-          Everything {APP_NAME} has to offer
-        </Text>
+        <Text style={dynamicStyles.heroTitle}>{APP_NAME} Pro</Text>
+        <Text style={dynamicStyles.heroSubtitle}>Unlock the full experience</Text>
       </View>
 
-      {/* Feature list */}
+      {/* Features */}
       <View style={dynamicStyles.featuresCard}>
-        {FEATURES.map((feature) => (
-          <View key={feature} style={dynamicStyles.featureRow}>
+        {FEATURES.map((f, i) => (
+          <View key={i} style={dynamicStyles.featureRow}>
             <Text style={dynamicStyles.featureCheckmark}>✓</Text>
-            <Text style={dynamicStyles.featureText}>{feature}</Text>
+            <Text style={dynamicStyles.featureText}>{f}</Text>
           </View>
         ))}
       </View>
 
-      {/* Packages from RevenueCat */}
+      {/* Packages */}
       {isLoading ? (
-        <ActivityIndicator color={colors.primary} style={{ marginTop: 32 }} />
+        <ActivityIndicator style={{ marginTop: 32 }} color={colors.primary} />
       ) : packages.length === 0 ? (
         <View style={dynamicStyles.noProductsCard}>
-          <Text style={dynamicStyles.noProductsText}>Subscription plans coming soon</Text>
+          <Text style={dynamicStyles.noProductsText}>Subscriptions coming soon</Text>
         </View>
       ) : (
         <View style={dynamicStyles.packageList}>
-          {packages.map((pkg) => (
+          {packages.map((pkg: { identifier: string; product: { title: string; description: string; priceString: string } }) => (
             <TouchableOpacity
               key={pkg.identifier}
-              style={[
-                dynamicStyles.packageCard,
-                selectedPackageId === pkg.identifier && dynamicStyles.packageCardSelected,
-              ]}
-              onPress={() => setSelectedPackageId(pkg.identifier)}
-              accessibilityRole="button"
-              accessibilityLabel={`Select ${pkg.packageType} plan at ${pkg.product.priceString}`}
-              accessibilityState={{ selected: selectedPackageId === pkg.identifier }}
+              style={[dynamicStyles.packageCard, selectedPackageId === pkg.identifier && dynamicStyles.packageCardSelected]}
+              onPress={() => handleSelectPackage(pkg.identifier)}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: selectedPackageId === pkg.identifier }}
             >
               <View style={{ flex: 1 }}>
                 <Text style={dynamicStyles.packageTitle}>{pkg.product.title}</Text>
                 <Text style={dynamicStyles.packageDesc}>{pkg.product.description}</Text>
               </View>
               <Text style={dynamicStyles.packagePrice}>{pkg.product.priceString}</Text>
-              {selectedPackageId === pkg.identifier && (
-                <Text style={{ marginLeft: 8, fontSize: 20, color: colors.primary }}>✓</Text>
-              )}
             </TouchableOpacity>
           ))}
         </View>
       )}
 
-      {/* Trial note */}
       {TRIAL_DAYS > 0 && (
         <Text style={dynamicStyles.trialNote}>
-          {TRIAL_DAYS}-day free trial · Cancel anytime
+          Start your {TRIAL_DAYS}-day free trial. Cancel anytime.
         </Text>
       )}
     </>
   );
 
   const renderProductsTab = () => (
-    <View style={dynamicStyles.packageList}>
-      {ONE_TIME_PRODUCTS.map((product) => {
-        const isOwned = ownedProducts.includes(product.id);
-        return (
-          <View key={product.id} style={[dynamicStyles.productCard, isOwned && dynamicStyles.productOwned]}>
-            <View style={dynamicStyles.productHeader}>
-              <Text style={dynamicStyles.productName}>{product.name}</Text>
-              <Text style={dynamicStyles.productPrice}>{product.price}</Text>
+    <View style={{ paddingHorizontal: 16, marginTop: 16, gap: 12 }}>
+      {ONE_TIME_PRODUCTS.length === 0 ? (
+        <View style={dynamicStyles.noProductsCard}>
+          <Text style={dynamicStyles.noProductsText}>No products available</Text>
+        </View>
+      ) : (
+        ONE_TIME_PRODUCTS.map((product) => {
+          const owned = ownedProducts?.includes(product.productId) ?? false;
+          return (
+            <View key={product.productId} style={[dynamicStyles.productCard, owned && dynamicStyles.productOwned]}>
+              <View style={dynamicStyles.productHeader}>
+                <Text style={dynamicStyles.productName}>{product.name}</Text>
+                <Text style={dynamicStyles.productPrice}>${product.price.toFixed(2)}</Text>
+              </View>
+              {product.description && (
+                <Text style={dynamicStyles.productDesc}>{product.description}</Text>
+              )}
+              <TouchableOpacity
+                style={dynamicStyles.productBuyButton}
+                onPress={() => handlePurchaseProduct(product.productId)}
+                disabled={purchasing || owned}
+                accessibilityRole="button"
+                accessibilityLabel={owned ? `${product.name} - Owned` : `Buy ${product.name}`}
+              >
+                <Text style={dynamicStyles.productBuyText}>
+                  {owned ? 'Owned' : purchasing ? 'Processing…' : 'Buy'}
+                </Text>
+              </TouchableOpacity>
             </View>
-            <Text style={dynamicStyles.productDesc}>{product.description}</Text>
-            <TouchableOpacity
-              style={[dynamicStyles.productBuyButton, (purchasing || isOwned) && dynamicStyles.ctaButtonDisabled]}
-              onPress={() => handleOneTimePurchase(product.productId)}
-              disabled={purchasing || isOwned}
-              accessibilityRole="button"
-              accessibilityLabel={isOwned ? `${product.name} owned` : `Buy ${product.name}`}
-              accessibilityState={{ disabled: purchasing || isOwned, busy: purchasing }}
-            >
-              <Text style={dynamicStyles.productBuyText}>
-                {isOwned ? 'Owned' : 'Buy Now'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        );
-      })}
+          );
+        })
+      )}
     </View>
   );
 
-  const renderCreditsTab = () => (
-    <>
-      {/* Credit balance display */}
-      <View style={dynamicStyles.creditBalance}>
-        <Text style={dynamicStyles.creditBalanceLabel}>Your Balance</Text>
-        <Text style={dynamicStyles.creditBalanceValue}>--</Text>
-        <Text style={dynamicStyles.creditBalanceLabel}>{CREDITS_CONFIG?.currencyNamePlural ?? 'credits'}</Text>
-      </View>
+  const renderCreditsTab = () => {
+    const packs = CREDITS_CONFIG?.packs ?? [];
+    const currencyNamePlural = CREDITS_CONFIG?.currencyNamePlural ?? CREDITS_CONFIG?.currencyName ?? 'credits';
 
-      {/* Credit packs */}
-      <View style={dynamicStyles.packageList}>
-        {CREDITS_CONFIG?.packs.map((pack) => (
-          <TouchableOpacity
-            key={pack.id}
-            style={[dynamicStyles.creditPackCard, pack.popular && dynamicStyles.creditPackPopular]}
-            onPress={() => handleCreditPurchase(pack.id, pack.productId)}
-            disabled={purchasing}
-            accessibilityRole="button"
-            accessibilityLabel={`Buy ${pack.name} for ${pack.price}`}
-            accessibilityState={{ disabled: purchasing, busy: purchasing }}
-          >
-            {pack.popular && (
-              <View style={dynamicStyles.popularBadge}>
-                <Text style={dynamicStyles.popularBadgeText}>POPULAR</Text>
-              </View>
-            )}
-            <View style={dynamicStyles.creditPackInfo}>
-              <Text style={dynamicStyles.creditPackName}>{pack.name}</Text>
-              {(pack.bonusCredits ?? 0) > 0 && (
-                <Text style={dynamicStyles.creditPackBonus}>
-                  +{pack.bonusCredits} bonus {CREDITS_CONFIG?.currencyNamePlural ?? 'credits'}
-                </Text>
-              )}
+    return (
+      <>
+        {/* Balance display */}
+        <View style={dynamicStyles.creditBalance}>
+          <Text style={dynamicStyles.creditBalanceLabel}>Your Balance</Text>
+          <Text style={dynamicStyles.creditBalanceValue}>0</Text>
+          <Text style={dynamicStyles.creditBalanceLabel}>{currencyNamePlural}</Text>
+        </View>
+
+        {/* Credit packs */}
+        <View style={{ paddingHorizontal: 16, marginTop: 16, gap: 12 }}>
+          {packs.length === 0 ? (
+            <View style={dynamicStyles.noProductsCard}>
+              <Text style={dynamicStyles.noProductsText}>No credit packs available</Text>
             </View>
-            <Text style={dynamicStyles.creditPackPrice}>{pack.price}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </>
-  );
+          ) : (
+            packs.map((pack, i) => (
+              <View
+                key={pack.productId ?? i}
+                style={[dynamicStyles.creditPackCard, pack.popular && dynamicStyles.creditPackCardPopular]}
+              >
+                <View style={dynamicStyles.creditPackHeader}>
+                  <Text style={dynamicStyles.creditPackName}>{pack.name ?? `${pack.amount} ${currencyNamePlural}`}</Text>
+                  {pack.popular && (
+                    <View style={dynamicStyles.creditPackPopularBadge}>
+                      <Text style={dynamicStyles.creditPackPopularText}>POPULAR</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={dynamicStyles.creditPackAmount}>
+                  {pack.amount} {currencyNamePlural}
+                  {pack.bonus ? ` + ${pack.bonus} bonus` : ''}
+                </Text>
+                <Text style={dynamicStyles.creditPackPrice}>${pack.price.toFixed(2)}</Text>
+                <TouchableOpacity
+                  style={dynamicStyles.creditPackBuyButton}
+                  onPress={() => pack.productId && handlePurchaseCredits(pack.productId, pack.amount)}
+                  disabled={purchasing || !pack.productId}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Buy ${pack.amount} ${currencyNamePlural} for $${pack.price.toFixed(2)}`}
+                >
+                  <Text style={dynamicStyles.creditPackBuyText}>
+                    {purchasing ? 'Processing…' : 'Buy'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ))
+          )}
+        </View>
+      </>
+    );
+  };
 
-  // --- CTA button text and action for active tab ---
-  const ctaConfig = useMemo(() => {
-    if (activeTab === 'plans') {
-      return {
-        text: packages.length === 0
-          ? 'Coming Soon'
-          : TRIAL_DAYS > 0
-            ? 'Start Free Trial'
-            : 'Subscribe Now',
-        disabled: packages.length === 0,
-        onPress: handlePurchase,
-        label: TRIAL_DAYS > 0 ? 'Start free trial' : 'Subscribe',
-      };
-    }
-    return null; // Products and credits have inline buy buttons
-  }, [activeTab, packages.length, handlePurchase]);
+  if (!IAP_ENABLED) {
+    return (
+      <SafeAreaView style={dynamicStyles.container}>
+        <View style={dynamicStyles.header}>
+          <Text style={dynamicStyles.headerTitle}>Upgrade</Text>
+          <TouchableOpacity onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Close paywall">
+            <X size={24} color={colors.text} />
+          </TouchableOpacity>
+        </View>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+          <Text style={{ fontSize: 16, color: colors.textSecondary, textAlign: 'center' }}>
+            In-app purchases are not enabled for this app.
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={dynamicStyles.container}>
-      {/* Header with close button */}
+      {/* Header */}
       <View style={dynamicStyles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          accessibilityRole="button"
-          accessibilityLabel="Close"
-          accessibilityHint="Dismiss paywall"
-          style={{ width: 44, height: 44, marginLeft: -10, alignItems: 'center', justifyContent: 'center' }}
-        >
-          <X size={24} color={colors.textSecondary} />
+        <Text style={dynamicStyles.headerTitle}>Upgrade {APP_NAME}</Text>
+        <TouchableOpacity onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Close paywall">
+          <X size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={dynamicStyles.headerTitle}>
-          {activeTab === 'credits'
-            ? `Get ${CREDITS_CONFIG?.currencyName ?? 'Credits'}`
-            : activeTab === 'products'
-              ? 'Premium Features'
-              : `${APP_NAME} Pro`}
-        </Text>
-        <View style={{ width: 24 }} />
       </View>
 
-      {/* Tab bar (only if multiple models active) */}
+      {/* Tab bar (only when multiple tabs) */}
       {showTabs && (
         <View style={dynamicStyles.tabBar}>
-          {AVAILABLE_TABS.map((tab) => (
+          {AVAILABLE_TABS.map((t) => (
             <TouchableOpacity
-              key={tab.id}
-              style={[dynamicStyles.tab, activeTab === tab.id && dynamicStyles.tabActive]}
-              onPress={() => setActiveTab(tab.id)}
+              key={t.id}
+              style={[dynamicStyles.tab, activeTab === t.id && dynamicStyles.tabActive]}
+              onPress={() => { setActiveTab(t.id); track('paywall_tab_changed', { tab: t.id }); }}
               accessibilityRole="tab"
-              accessibilityLabel={`${tab.label} tab`}
-              accessibilityState={{ selected: activeTab === tab.id }}
+              accessibilityState={{ selected: activeTab === t.id }}
             >
-              <Text style={[dynamicStyles.tabText, activeTab === tab.id && dynamicStyles.tabTextActive]}>
-                {tab.label}
+              <Text style={[dynamicStyles.tabText, activeTab === t.id && dynamicStyles.tabTextActive]}>
+                {t.label}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
       )}
 
-      {!IAP_ENABLED ? (
-        <View style={[dynamicStyles.noProductsCard, { marginTop: 32 }]}>
-          <Text style={dynamicStyles.noProductsText}>In-app purchases are not enabled</Text>
-        </View>
-      ) : (
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
-          {activeTab === 'plans' && renderPlansTab()}
-          {activeTab === 'products' && renderProductsTab()}
-          {activeTab === 'credits' && renderCreditsTab()}
-        </ScrollView>
-      )}
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 8 }}>
+        {activeTab === 'plans' && renderPlansTab()}
+        {activeTab === 'products' && renderProductsTab()}
+        {activeTab === 'credits' && renderCreditsTab()}
+      </ScrollView>
 
-      {/* Footer with CTA and restore */}
-      <View style={dynamicStyles.footer}>
-        {ctaConfig && (
+      {/* CTA */}
+      <View style={dynamicStyles.ctaContainer}>
+        {activeTab === 'plans' && (
           <TouchableOpacity
-            style={[dynamicStyles.ctaButton, (purchasing || ctaConfig.disabled) && dynamicStyles.ctaButtonDisabled]}
-            onPress={ctaConfig.onPress}
-            disabled={purchasing || ctaConfig.disabled}
+            style={dynamicStyles.ctaButton}
+            onPress={handlePurchasePlan}
+            disabled={purchasing || packages.length === 0}
             accessibilityRole="button"
-            accessibilityLabel={ctaConfig.label}
-            accessibilityState={{ disabled: purchasing || ctaConfig.disabled, busy: purchasing }}
+            accessibilityLabel={TRIAL_DAYS > 0 ? `Start ${TRIAL_DAYS}-day free trial` : 'Subscribe now'}
           >
             {purchasing ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={dynamicStyles.ctaText}>{ctaConfig.text}</Text>
+              <Text style={dynamicStyles.ctaButtonText}>
+                {TRIAL_DAYS > 0 ? `Start ${TRIAL_DAYS}-Day Free Trial` : 'Subscribe Now'}
+              </Text>
             )}
           </TouchableOpacity>
         )}
-        <TouchableOpacity
-          onPress={handleRestore}
-          disabled={purchasing}
-          style={dynamicStyles.restoreButton}
-          accessibilityRole="button"
-          accessibilityLabel="Restore purchases"
-          accessibilityState={{ disabled: purchasing, busy: purchasing }}
-        >
-          <Text style={dynamicStyles.restoreText}>Restore Purchases</Text>
+        <TouchableOpacity style={dynamicStyles.restoreButton} onPress={handleRestore} accessibilityRole="button" accessibilityLabel="Restore purchases">
+          <Text style={dynamicStyles.restoreButtonText}>Restore Purchases</Text>
         </TouchableOpacity>
       </View>
+
+      <Text style={dynamicStyles.legalText}>
+        Subscriptions auto-renew unless cancelled 24 hours before renewal.
+        Manage subscriptions in your App Store account settings.
+      </Text>
     </SafeAreaView>
   );
 }

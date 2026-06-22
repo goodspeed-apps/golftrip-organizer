@@ -22,7 +22,6 @@ import { trackScreenLoad } from '@/lib/performance';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useToast } from '@/components/ui/Toast';
-import { ImportEntryCard } from '@/components/ImportEntryCard';
 
 type ParseStatus = 'awaiting_email' | 'parsing' | 'parsed_preview' | 'confirmed' | 'parse_failed_manual_fallback';
 
@@ -37,6 +36,95 @@ interface EmailImport {
   sender_email: string | null;
   received_at: string;
   tee_time_id: string | null;
+}
+
+interface ImportEntryCardProps {
+  item: EmailImport;
+  index: number;
+  isConfirmed: boolean;
+  onConfirm: () => Promise<void>;
+  onEdit: () => void;
+  colors: ReturnType<typeof useThemeColors>;
+}
+
+function ImportEntryCard({ item, index, isConfirmed, onConfirm, onEdit, colors }: ImportEntryCardProps) {
+  return (
+    <Animated.View
+      entering={FadeInDown.delay(index * 60).duration(350)}
+      exiting={FadeOutRight.duration(300)}
+      style={{
+        marginHorizontal: 20,
+        marginBottom: 12,
+        backgroundColor: colors.surface,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: isConfirmed ? colors.success : colors.border,
+        overflow: 'hidden',
+      }}
+    >
+      <View style={{ padding: 16 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+          <Text style={{ fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15, color: colors.text, flex: 1 }}>
+            {item.parsed_course_name ?? 'Unknown Course'}
+          </Text>
+          {isConfirmed && (
+            <CheckCircle size={18} color={colors.success} style={{ marginLeft: 8 }} />
+          )}
+        </View>
+
+        {item.parse_status === 'parse_failed_manual_fallback' ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <AlertCircle size={14} color={colors.warning} />
+            <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: colors.warning }}>
+              Couldn't auto-parse. Tap Edit to fill in details.
+            </Text>
+          </View>
+        ) : (
+          <View style={{ gap: 4 }}>
+            {item.parsed_tee_date && (
+              <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: colors.textSecondary }}>
+                📅 {item.parsed_tee_date} {item.parsed_tee_time ? `at ${item.parsed_tee_time}` : ''}
+              </Text>
+            )}
+            {item.parsed_player_count && (
+              <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: colors.textSecondary }}>
+                👥 {item.parsed_player_count} players
+              </Text>
+            )}
+            {item.parsed_confirmation_number && (
+              <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: colors.textSecondary }}>
+                🎫 Conf: {item.parsed_confirmation_number}
+              </Text>
+            )}
+          </View>
+        )}
+      </View>
+
+      {!isConfirmed && (
+        <View style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: colors.border }}>
+          <Pressable
+            onPress={onEdit}
+            accessibilityLabel="Edit import"
+            style={{ flex: 1, padding: 12, alignItems: 'center' }}
+          >
+            <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 14, color: colors.textSecondary }}>
+              Edit
+            </Text>
+          </Pressable>
+          <View style={{ width: 1, backgroundColor: colors.border }} />
+          <Pressable
+            onPress={onConfirm}
+            accessibilityLabel="Confirm and add tee time"
+            style={{ flex: 1, padding: 12, alignItems: 'center', backgroundColor: colors.primary + '0D' }}
+          >
+            <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 14, color: colors.primary }}>
+              Add to Trip
+            </Text>
+          </Pressable>
+        </View>
+      )}
+    </Animated.View>
+  );
 }
 
 export default function EmailImportScreen() {
@@ -178,70 +266,60 @@ export default function EmailImportScreen() {
             })}
           >
             {copied
-              ? <CheckCircle size={16} color={colors.textOnPrimary} />
-              : <Copy size={16} color={colors.textOnPrimary} />
+              ? <CheckCircle size={16} color={colors.textOnPrimary ?? '#FFFFFF'} />
+              : <Copy size={16} color={colors.textOnPrimary ?? '#FFFFFF'} />
             }
-            <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 14, color: colors.textOnPrimary, marginLeft: 8 }}>
+            <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 14, color: colors.textOnPrimary ?? '#FFFFFF', marginLeft: 8 }}>
               {copied ? 'Copied!' : 'Copy Address'}
             </Text>
           </Pressable>
         </Animated.View>
 
-        {/* Imports List */}
-        <Animated.View entering={FadeInDown.delay(100).duration(400)} style={{ paddingHorizontal: 20 }}>
+        {/* Instructions */}
+        <Animated.View entering={FadeInDown.delay(100).duration(400)} style={{ marginHorizontal: 20, marginBottom: 24 }}>
           <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 13, color: colors.textSecondary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.8 }}>
-            Pending Imports ({pendingImports.length})
-          </Text>
-
-          {loading ? (
-            <>
-              <LoadingSkeleton width="100%" height={80} style={{ marginBottom: 10 }} />
-              <LoadingSkeleton width="100%" height={80} style={{ marginBottom: 10 }} />
-            </>
-          ) : pendingImports.length === 0 ? (
-            <EmptyState
-              icon={<Mail size={36} color={colors.textMuted} />}
-              title="No pending imports"
-              description="Forward a booking confirmation email to the address above and it will appear here."
-            />
-          ) : (
-            pendingImports.map((item) => (
-              <Animated.View
-                key={item.id}
-                entering={FadeInDown.duration(300)}
-                exiting={FadeOutRight.duration(300)}
-                style={{ marginBottom: 12 }}
-              >
-                <ImportEntryCard
-                  item={item}
-                  isConfirmed={confirmedIds.has(item.id)}
-                  onConfirm={() => handleConfirm(item)}
-                  onEdit={() => handleEdit(item)}
-                />
-              </Animated.View>
-            ))
-          )}
-        </Animated.View>
-
-        {/* How it works */}
-        <Animated.View entering={FadeInDown.delay(150).duration(400)} style={{
-          marginHorizontal: 20, marginTop: 8, borderRadius: 16,
-          backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, padding: 20,
-        }}>
-          <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 14, color: colors.text, marginBottom: 12 }}>
-            How it works
+            HOW IT WORKS
           </Text>
           {[
-            { icon: <Mail size={16} color={colors.primary} />, text: 'Forward your booking confirmation email to the address above' },
-            { icon: <AlertCircle size={16} color={colors.primary} />, text: "We'll automatically parse the course, date, time, and player count" },
-            { icon: <CheckCircle size={16} color={colors.success} />, text: 'Review and confirm to add it to your itinerary' },
+            { icon: '📧', text: 'Forward your booking confirmation email to the address above' },
+            { icon: '🤖', text: 'We automatically parse the course, date, time, and player count' },
+            { icon: '✅', text: 'Review and confirm to add it to your trip itinerary' },
           ].map(({ icon, text }, i) => (
-            <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: i < 2 ? 10 : 0 }}>
-              {icon}
-              <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: colors.textSecondary, flex: 1 }}>{text}</Text>
+            <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 }}>
+              <Text style={{ fontSize: 16, marginRight: 10, marginTop: 1 }}>{icon}</Text>
+              <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 14, color: colors.textSecondary, flex: 1 }}>{text}</Text>
             </View>
           ))}
         </Animated.View>
+
+        {/* Pending Imports */}
+        {pendingImports.length > 0 && (
+          <Animated.View entering={FadeInDown.delay(150).duration(400)}>
+            <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 13, color: colors.textSecondary, marginHorizontal: 20, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+              PENDING IMPORTS ({pendingImports.length})
+            </Text>
+            {pendingImports.map((item, index) => (
+              <ImportEntryCard
+                key={item.id}
+                item={item}
+                index={index}
+                isConfirmed={confirmedIds.has(item.id)}
+                onConfirm={() => handleConfirm(item)}
+                onEdit={() => handleEdit(item)}
+                colors={colors}
+              />
+            ))}
+          </Animated.View>
+        )}
+
+        {!loading && pendingImports.length === 0 && (
+          <Animated.View entering={FadeInDown.delay(150).duration(400)} style={{ paddingHorizontal: 20 }}>
+            <EmptyState
+              title="No pending imports"
+              description="Forward a booking confirmation email to your trip address to get started."
+            />
+          </Animated.View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
