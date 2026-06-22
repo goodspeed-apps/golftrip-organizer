@@ -11,6 +11,12 @@ import { takeScreenshot, loadApp } from 'react-native-owl';
  *       single screen that advances via internal state.
  *       Update the step navigation calls below after first run.
  */
+
+// These globals are provided by the react-native-owl / test runner at runtime.
+declare const device: { openURL(opts: { url: string }): Promise<void> };
+declare function element(matcher: unknown): { tap(): Promise<void> };
+declare const by: { id(id: string): unknown };
+
 describe('Onboarding flow', () => {
   beforeAll(async () => {
     await loadApp();

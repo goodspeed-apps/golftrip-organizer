@@ -1,131 +1,122 @@
-/**
- * GAS Template, Button
- *
- * Configurable button with variant, size, loading state, and icon support.
- * Reads border radius and button style from gasConfig.design.layout.
- *
- * Dependencies: useThemeColors (ThemeContext), gasConfig
- */
-
-import { ActivityIndicator, Text, TouchableOpacity, type ViewStyle, type TextStyle } from 'react-native';
+import { TouchableOpacity, Text, ActivityIndicator, StyleSheet, type ViewStyle, type TextStyle } from 'react-native';
 import { useThemeColors } from '@/context/ThemeContext';
-import { gasConfig } from '../../gas.config';
 
-type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive';
-type ButtonSize = 'sm' | 'md' | 'lg';
-
-interface ButtonProps {
-  /** Button label text */
-  label: string;
-  /** Press handler */
-  onPress: () => void;
-  /** Visual variant (default: primary) */
-  variant?: ButtonVariant;
-  /** Size preset (default: md) */
-  size?: ButtonSize;
-  /** Show loading spinner and disable press */
-  loading?: boolean;
-  /** Disable the button */
+export interface ButtonProps {
+  title: string;
+  onPress: () => void | Promise<void>;
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive';
+  size?: 'sm' | 'md' | 'lg';
   disabled?: boolean;
-  /** Lucide icon component to show before label */
-  icon?: React.ElementType;
-  /** Icon size override (defaults to font size) */
-  iconSize?: number;
-  /** Take full width of container */
-  fullWidth?: boolean;
-  /** Additional style overrides */
+  loading?: boolean;
   style?: ViewStyle;
-/** Accessibility label override */
+  textStyle?: TextStyle;
   accessibilityLabel?: string;
-  /** Test ID for automated testing */
+  accessibilityHint?: string;
   testID?: string;
 }
 
-const SIZE_MAP: Record<ButtonSize, { height: number; px: number; fontSize: number }> = {
-  sm: { height: 36, px: 14, fontSize: 13 },
-  md: { height: 48, px: 20, fontSize: 15 },
-  lg: { height: 56, px: 28, fontSize: 17 },
-};
-
-function getRadius(): number {
-  const style = gasConfig.design.layout.buttonStyle;
-  if (style === 'pill') return 999;
-  if (style === 'square') return 6;
-  return 14; // rounded (default)
-}
-
 export function Button({
-  label,
+  title,
   onPress,
   variant = 'primary',
   size = 'md',
-  loading = false,
   disabled = false,
-  icon: Icon,
-  iconSize,
-  fullWidth = false,
+  loading = false,
   style,
+  textStyle,
   accessibilityLabel,
+  accessibilityHint,
   testID,
 }: ButtonProps) {
   const { colors } = useThemeColors();
-  const s = SIZE_MAP[size];
-  const radius = getRadius();
-  const isDisabled = disabled || loading;
 
-  const variants: Record<ButtonVariant, { bg: string; border?: string; text: string }> = {
-    primary: { bg: colors.primary, text: colors.textOnPrimary },
-    secondary: { bg: colors.surface, border: colors.border, text: colors.text },
-    outline: { bg: 'transparent', border: colors.border, text: colors.text },
-    ghost: { bg: 'transparent', text: colors.text },
-    destructive: { bg: colors.error, text: colors.textOnPrimary },
+  const sizeStyles: Record<string, { paddingVertical: number; paddingHorizontal: number; fontSize: number; borderRadius: number }> = {
+    sm: { paddingVertical: 6, paddingHorizontal: 12, fontSize: 13, borderRadius: 8 },
+    md: { paddingVertical: 12, paddingHorizontal: 20, fontSize: 15, borderRadius: 12 },
+    lg: { paddingVertical: 16, paddingHorizontal: 28, fontSize: 17, borderRadius: 14 },
   };
 
-  const v = variants[variant];
+  const currentSize = sizeStyles[size];
 
-  const containerStyle: ViewStyle = {
-    height: s.height,
-    paddingHorizontal: s.px,
-    borderRadius: radius,
-    backgroundColor: v.bg,
-    borderWidth: v.border ? 1 : 0,
-    borderColor: v.border,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    opacity: isDisabled ? 0.5 : 1,
-    alignSelf: fullWidth ? 'stretch' : 'auto',
-    ...style,
+  const getBackgroundColor = () => {
+    if (disabled || loading) return colors.border;
+    switch (variant) {
+      case 'primary': return colors.primary;
+      case 'secondary': return colors.secondary ?? colors.surface;
+      case 'outline': return 'transparent';
+      case 'ghost': return 'transparent';
+      case 'destructive': return colors.error;
+      default: return colors.primary;
+    }
   };
 
-  const textStyle: TextStyle = {
-    color: v.text,
-    fontSize: s.fontSize,
-    fontWeight: '600',
+  const getTextColor = () => {
+    if (disabled || loading) return colors.textSecondary;
+    switch (variant) {
+      case 'primary': return colors.textOnPrimary;
+      case 'secondary': return colors.text;
+      case 'outline': return colors.primary;
+      case 'ghost': return colors.primary;
+      case 'destructive': return '#fff';
+      default: return colors.textOnPrimary;
+    }
   };
 
-  const iconSz = iconSize ?? s.fontSize;
+  const getBorderColor = () => {
+    if (variant === 'outline') return colors.primary;
+    if (variant === 'secondary') return colors.border;
+    return 'transparent';
+  };
 
   return (
     <TouchableOpacity
       onPress={onPress}
-      disabled={isDisabled}
-      activeOpacity={0.8}
-      style={containerStyle}
-      accessibilityLabel={accessibilityLabel ?? label}
-      testID={testID}
+      disabled={disabled || loading}
+      accessibilityLabel={accessibilityLabel ?? title}
+      accessibilityHint={accessibilityHint}
       accessibilityRole="button"
-      accessibilityState={{ disabled: isDisabled, busy: loading }}
+      accessibilityState={{ disabled: disabled || loading }}
+      testID={testID}
+      style={[
+        styles.base,
+        {
+          backgroundColor: getBackgroundColor(),
+          paddingVertical: currentSize.paddingVertical,
+          paddingHorizontal: currentSize.paddingHorizontal,
+          borderRadius: currentSize.borderRadius,
+          borderWidth: variant === 'outline' || variant === 'secondary' ? 1 : 0,
+          borderColor: getBorderColor(),
+        },
+        style,
+      ]}
     >
       {loading ? (
-        <ActivityIndicator size="small" color={v.text} />
+        <ActivityIndicator color={getTextColor()} size="small" />
       ) : (
-        <>
-          {Icon && <Icon size={iconSz} color={v.text} />}
-          <Text style={textStyle}>{label}</Text>
-        </>
+        <Text
+          style={[
+            styles.text,
+            {
+              color: getTextColor(),
+              fontSize: currentSize.fontSize,
+            },
+            textStyle,
+          ]}
+        >
+          {title}
+        </Text>
       )}
     </TouchableOpacity>
   );
 }
+
+const styles = StyleSheet.create({
+  base: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+  },
+  text: {
+    fontWeight: '600',
+  },
+});

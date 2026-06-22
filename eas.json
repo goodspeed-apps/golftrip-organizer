@@ -6,7 +6,10 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EAS_PROJECT_ID": "d662cc12-d08f-499b-8086-095fe6ebb829"
+      }
     },
     "preview": {
       "autoIncrement": true,
@@ -23,7 +26,8 @@
         "resourceClass": "medium"
       },
       "env": {
-        "EXPO_PUBLIC_RELEASE_CHANNEL": "preview"
+        "EXPO_PUBLIC_RELEASE_CHANNEL": "preview",
+        "EAS_PROJECT_ID": "d662cc12-d08f-499b-8086-095fe6ebb829"
       }
     },
     "preview-sim": {
@@ -51,7 +55,8 @@
         "resourceClass": "medium"
       },
       "env": {
-        "EXPO_PUBLIC_RELEASE_CHANNEL": "staging"
+        "EXPO_PUBLIC_RELEASE_CHANNEL": "staging",
+        "EAS_PROJECT_ID": "d662cc12-d08f-499b-8086-095fe6ebb829"
       }
     },
     "production": {
@@ -67,7 +72,8 @@
         "resourceClass": "medium"
       },
       "env": {
-        "EXPO_PUBLIC_RELEASE_CHANNEL": "production"
+        "EXPO_PUBLIC_RELEASE_CHANNEL": "production",
+        "EAS_PROJECT_ID": "d662cc12-d08f-499b-8086-095fe6ebb829"
       }
     }
   },
