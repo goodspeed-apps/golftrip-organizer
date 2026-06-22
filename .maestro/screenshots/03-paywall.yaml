@@ -1,0 +1,21 @@
+appId: ${MAESTRO_APP_ID}
+name: screenshot-paywall
+---
+# Navigate to Paywall screen and capture screenshot.
+# TODO: Replace navigation steps with app-specific commands once real routes exist.
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 3000
+# TODO: Navigate to the paywall. Common patterns:
+#   - Tap a premium feature gate that surfaces the paywall
+#   - Navigate via a deep link: runFlow with a deepLink command
+#   - Tap an upgrade button in settings
+# Example deep link approach:
+#   - openLink: "${MAESTRO_APP_SCHEME}://paywall"
+#   - waitForAnimationToEnd:
+#       timeout: 3000
+# TODO: Dismiss any interstitial dialogs (e.g. notifications permission) before capture.
+- waitForAnimationToEnd:
+    timeout: 2000
+- takeScreenshot: screenshots/_raw/${MAESTRO_PLATFORM}/03-paywall

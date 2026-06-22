@@ -1,0 +1,13 @@
+appId: ${MAESTRO_APP_ID}
+name: a11y-smoke
+---
+- launchApp:
+    clearState: true
+- assertVisible:
+    text: "Sign in"
+    optional: true
+- assertVisible:
+    text: "Email"
+- assertVisible:
+    id: "email-input"
+    optional: true
