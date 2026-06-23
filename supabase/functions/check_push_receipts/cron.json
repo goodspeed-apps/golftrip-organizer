@@ -1,0 +1,4 @@
+{
+  "schedule": "*/5 * * * *",
+  "function": "check_push_receipts"
+}

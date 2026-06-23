@@ -1,0 +1,27 @@
+appId: ${MAESTRO_APP_ID}
+name: smoke
+---
+# Launch fresh and verify the app does not crash.
+- launchApp:
+    clearState: true
+
+# Onboarding welcome — present in the default template, optional in case a
+# devagent-generated app skips it.
+- assertVisible:
+    text: "Get started"
+    optional: true
+
+# Login screen is reachable in every template branch. "Welcome back" is the
+# subtitle on the login screen; "Email" is the input placeholder.
+- assertVisible:
+    text: "Welcome back"
+    optional: true
+
+# Tap "Get started" if the onboarding welcome is showing, to advance to login.
+- tapOn:
+    text: "Get started"
+    optional: true
+
+# The Email input placeholder confirms the login screen rendered without crash.
+- assertVisible:
+    text: "Email"
